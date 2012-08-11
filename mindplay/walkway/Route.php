@@ -121,6 +121,7 @@ class Route implements ArrayAccess
    *
    * @param $url string relative URL
    * @return Route|null returns the resolved Route, or null if no Route was matched
+   * @throws RoutingException if a bad Route is encountered
    */
   public function resolve($url)
   {
@@ -138,7 +139,6 @@ class Route implements ArrayAccess
       $patterns = $route->patterns;
 
       if (count($patterns) === 0) {
-        var_dump($route);
         echo "dead end\n";
         return null;
       }
@@ -147,7 +147,13 @@ class Route implements ArrayAccess
 
       foreach ($patterns as $pattern => $init) {
         echo "testing pattern: $pattern\n";
-        if (preg_match('/^'.$pattern.'$/i', $token, $values) === 1) {
+        $match = preg_match('/^'.$pattern.'$/i', $token, $values);
+
+        if ($match === false) {
+          throw new RoutingException('invalid pattern "' . $pattern, $init);
+        }
+
+        if ($match === 1) {
           echo "pattern matched\n";
 
           $matched = true;
@@ -168,7 +174,7 @@ class Route implements ArrayAccess
 
     return $matched ? $route : null;
   }
-  
+
   /**
    * Invoke a function using variables collected during traversal, while filling
    * any missing parameters with values from a given set of nameless parameters -
@@ -176,6 +182,8 @@ class Route implements ArrayAccess
    *
    * @param Closure $func the function to be invoked.
    * @param mixed[] $values additional nameless values to be identified
+   * @return mixed the value returned by the invoked function
+   * @throws InvocationException
    * @see $vars
    */
   public function invoke($func, $values=array())
@@ -202,7 +210,7 @@ class Route implements ArrayAccess
         // fill parameter using nameless value:
         $value_index++;
         if ($value_index > $last_index) {
-          die('insufficient nameless values to fill the parameter-list');
+          throw new InvocationException('insufficient nameless values to fill the parameter-list', $func);
         }
         $params[] = $values[$value_index];
         // add to list of named values:
@@ -211,13 +219,9 @@ class Route implements ArrayAccess
     }
     
     if ($value_index !== $last_index) {
-      $error = $value_index - $last_index;
-      $source = $fn->getFileName() . '#' . $fn->getStartLine();
-      die('wrong parameter-count: ' . abs($error) . ' too ' . ($error>0 ? 'many' : 'few') . ' at ' . $source);
+      throw new InvocationException('wrong parameter-count: ' . abs($error) . ' too ' . ($error>0 ? 'many' : 'few'), $func);
     }
-    
-    #var_dump($fn->getFileName() . '#' . $fn->getStartLine(), $params);
-    
+
     return call_user_func_array($func, $params);
   }
 }

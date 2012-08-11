@@ -1,8 +1,8 @@
 <?php
 
-require __DIR__.'/mindplay/walkway/Route.php';
-require __DIR__.'/mindplay/walkway/Module.php';
-require __DIR__.'/mindplay/walkway/Request.php';
+spl_autoload_register(function($class) {
+  include __DIR__.'/'.$class.'.php';
+});
 
 use mindplay\walkway\Route;
 use mindplay\walkway\Module;
