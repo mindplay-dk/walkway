@@ -1,5 +1,5 @@
 Walkway
-=======
+-------
 
 Elegant, modular routing for PHP - inspired by [vlucas][1]/[bulletphp][2].
 
@@ -57,7 +57,7 @@ which define sub-patterns, and so on:
     };
 
 2. Evaluate your routes
------------------------
+=======================
 
 This part of the API will change very soon, but currently works like this:
 
