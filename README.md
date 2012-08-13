@@ -19,7 +19,7 @@ which define sub-patterns, and so on:
 
     $module = new Module;
     
-    $module->route['blog'] = function ($route) {
+    $module['blog'] = function ($route) {
       $route['posts'] = function ($route) {
         $route['(\d+)'] = function ($route, $post_id) {
           // the \d+ pattern is captured and used to define the $post_id variable
@@ -52,18 +52,50 @@ which define sub-patterns, and so on:
       };
     };
     
-    $module->route->get = function () {
+    $module->get = function () {
       echo "hello from the root URL!\n";
     };
+
 
 2. Evaluate your Routes
 =======================
 
-This part of the API will change very soon, but currently works like this:
+A Module is the root of an independent collection of Routes.
 
-    $request = new Request($module->route, 'blog/posts/2012-08/page2');
-    
-    $request->execute();
+To resolve a URL and find the Route defined by your Module, do this:
+
+    $route = $module->resolve('blog/posts/2012-08/page2');
+
+Note that this would return `null` if the route was unresolved.
+
+To execute an HTTP method-handler associated with the Route, do this:
+
+    $route->execute('GET');
+
+
+3. Going MVC
+============
+
+The execute-method in the previous example returns true on success, unless the
+HTTP method-handler itself returns something else. In the example above, the
+HTTP method-handlers do not provide return values, but you can implement a
+simple MVC-style controller/action-abstraction without using a framework:
+
+    $module['posts'] = function ($route) {
+      $posts = new PostsController();
+      $route['(\d+)'] = function ($route, $post_id) use ($posts) {
+        $route->get = function ($post_id) use ($posts) {
+          return $posts->display($post_id);
+        };
+        $route['edit'] = function ($route) use ($posts) {
+          $route->get = function ($post_id) use($posts) {
+            return $posts->edit($post_id);
+          };
+        };
+      };
+    };
+
+    echo $module->resolve('posts/42/edit')->execute('get');
 
 
 [1]: https://github.com/vlucas
