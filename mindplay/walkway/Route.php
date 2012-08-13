@@ -141,6 +141,13 @@ class Route implements ArrayAccess
     foreach ($tokens as $index => $token) {
       echo "* resolve token {$index}: {$token}\n";
 
+      if ($token === '..') {
+        if ($this->parent === null) {
+          throw new RoutingException("invalid relative URL: {$url} - token {$index} has no parent");
+        }
+        $route = $route->parent;
+      }
+
       $patterns = $route->patterns;
 
       if (count($patterns) === 0) {

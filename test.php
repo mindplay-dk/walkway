@@ -29,8 +29,9 @@ $module['blog'] = function ($route) {
     };
     $route['(\d+)-(\d+)'] = function ($route, $year, $month) {
       $route['page(\d+)'] = function ($route, $page) {
-        $route->get = function($page, $year, $month) {
+        $route->get = function($route, $page, $year, $month) {
           echo "showing page {$page} of posts for year {$year} month {$month}\n";
+          echo "page 1 url: " . $route->resolve('../page1')->url . "\n";
         };
       };
       $route->get = function ($year, $month) {
