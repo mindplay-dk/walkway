@@ -25,6 +25,12 @@ use ReflectionFunction;
  *
  * It also implements a collection of HTTP method-handlers (e.g. GET, PUT, POST, DELETE)
  * which can be defined and accessed using get/set magic methods.
+ *
+ * @property Closure get
+ * @property Closure head
+ * @property Closure post
+ * @property Closure put
+ * @property Closure delete
  */
 class Route implements ArrayAccess
 {
@@ -83,7 +89,6 @@ class Route implements ArrayAccess
     
     $this->vars = $vars;
     $this->vars['route'] = $this;
-    $this->vars['module'] = $this->module;
   }
 
   public function offsetSet($pattern, $init) {
@@ -176,6 +181,26 @@ class Route implements ArrayAccess
   }
 
   /**
+   * @param $method string name of HTTP method-handler to execute (e.g. 'get', 'put', 'post', 'delete', etc.)
+   * @return mixed|bool the value returned by the HTTP method-handler; true if the method-handler returned
+   *                    no value - or false if the method-handler was not found (or returned false)
+   */
+  public function execute($method='get')
+  {
+    $func = $this->__get($method);
+
+    if ($func === null) {
+      return false; // method-handler not found
+    }
+
+    $result = $this->invoke($func);
+
+    return $result === null
+      ? true // method-handler executed but returned no value
+      : $result; // method-handler returned a result
+  }
+
+  /**
    * Invoke a function using variables collected during traversal, while filling
    * any missing parameters with values from a given set of nameless parameters -
    * as parameters are identified, they are added to the list of named variables.
@@ -186,22 +211,22 @@ class Route implements ArrayAccess
    * @throws InvocationException
    * @see $vars
    */
-  public function invoke($func, $values=array())
+  protected function invoke($func, $values=array())
   {
     /**
      * @var $value_index int the index of the next nameless value to use from $values
      * @var $params mixed[] the list of parameters to be applied to $func
      * @var $last_index int the index of the last nameless value
      */
-    
+
     $fn = new ReflectionFunction($func);
-    
+
     $value_index = -1;
-    
+
     $params = array();
-    
+
     $last_index = count($values)-1;
-    
+
     foreach ($fn->getParameters() as $param) {
       if (array_key_exists($param->name, $this->vars)) {
         // fill parameter using named value:
@@ -217,7 +242,7 @@ class Route implements ArrayAccess
         $this->vars[$param->name] = $values[$value_index];
       }
     }
-    
+
     if ($value_index !== $last_index) {
       throw new InvocationException('wrong parameter-count: ' . abs($error) . ' too ' . ($error>0 ? 'many' : 'few'), $func);
     }

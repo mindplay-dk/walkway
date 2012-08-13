@@ -6,13 +6,12 @@ spl_autoload_register(function($class) {
 
 use mindplay\walkway\Route;
 use mindplay\walkway\Module;
-use mindplay\walkway\Request;
 
 header('Content-type: text/plain');
 
 $module = new Module;
 
-$module->route['blog'] = function ($route) {
+$module['blog'] = function ($route) {
   $route['posts'] = function ($route) {
     $route['(\d+)'] = function ($route, $post_id) {
       if ($post_id == 99) {
@@ -41,7 +40,7 @@ $module->route['blog'] = function ($route) {
   };
 };
 
-$module->route->get = function () {
+$module->get = function () {
   echo "hello from the root URL!\n";
 };
 
@@ -56,9 +55,13 @@ foreach (array(
   'foo' // this will fail because there is no matching route
 ) as $url) {
   echo "\n----------------\n\nTESTING: {$url}\n\n";
-  $request = new Request($module->route, $url);
-  echo "RESULT: ".($request->execute() ? 'SUCCESS' : 'ERROR')."\n";
-  if ($request->route) {
-    echo "RESOLVED URL: /".($request->route->url)."\n";
+  $route = $module->resolve($url);
+  if ($route) {
+    if ($route->url) {
+      echo "RESOLVED URL: /".($route->url)."\n";
+    }
+    echo "RESULT: ".($route->execute() ? 'SUCCESS' : 'ERROR (no GET-method)')."\n";
+  } else {
+    echo "UNRESOLVED URL: $url\n";
   }
 }
