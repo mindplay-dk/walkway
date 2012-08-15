@@ -7,8 +7,17 @@ namespace mindplay\walkway;
  */
 class Module extends Route
 {
-  public function __construct(Module $parent = null)
+  public function __construct(Route $parent = null)
   {
-    parent::__construct($this);
+    if ($parent === null) {
+      parent::__construct($this);
+    } else {
+      parent::__construct($this, $parent->parent, $parent->token);
+    }
+
+    $this->init();
   }
+
+  public function init()
+  {}
 }

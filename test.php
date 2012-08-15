@@ -7,6 +7,30 @@ spl_autoload_register(function($class) {
 use mindplay\walkway\Route;
 use mindplay\walkway\Module;
 
+class CommentModule extends Module
+{
+  public function init() {
+    $this['submit'] = function($route) {
+      $route->get = function($route, $module) {
+        echo "displaying comment submission form\n";
+        echo "module: " . get_class($module) . "\n";
+        echo "module: " . get_class($route->module) . "\n";
+        echo "module parent: " . get_class($route->module->parent) . "\n";
+        echo "module parent url: " . $module->parent->url . "\n";
+        echo "module url: ".$module->url."\n";
+      };
+    };
+    $this->get = function($route, $module) {
+      echo "displaying comments!\n";
+      echo "current module: ".get_class($module)."\n";
+      echo "module url: ".$module->url."\n";
+      echo "module parent url: ".$module->parent->url."\n";
+      echo "route url: ".$route->url."\n";
+      echo "route parent url: ".$route->parent->url."\n";
+    };
+  }
+}
+
 header('Content-type: text/plain');
 
 $module = new Module;
@@ -25,6 +49,10 @@ $module['blog'] = function ($route) {
       };
       $route->get = function ($post_id) {
         echo "displaying post number {$post_id}!\n";
+      };
+      $route['comments'] = function($route) {
+        echo "delegating control to CommentModule\n";
+        return new CommentModule($route);
       };
     };
     $route['(\d+)-(\d+)'] = function ($route, $year, $month) {
@@ -50,6 +78,8 @@ foreach (array(
   'blog/posts/2012-07',
   'blog/posts/2012-07/page2',
   'blog/posts/42',
+  'blog/posts/88/comments', // this will dispatch the CommentModule
+  'blog/posts/66/comments/submit', // this will dispatch inside the CommentModule
   'blog/posts/99', // this one will fail because the router is blocking post_id 99
   '/',
   'blog', // this will fail because there is no method

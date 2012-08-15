@@ -89,6 +89,7 @@ class Route implements ArrayAccess
     
     $this->vars = $vars;
     $this->vars['route'] = $this;
+    $this->vars['module'] = $this->module;
   }
 
   public function offsetSet($pattern, $init) {
@@ -170,13 +171,18 @@ class Route implements ArrayAccess
 
           $matched = true;
           
-          $route = new Route($this->module, $route, $token, $route->vars);
+          $route = new Route($route->module, $route, $token, $route->vars);
           
           array_shift($values);
-          
-          if ($route->invoke($init, $values) === false) {
+
+          $init_result = $route->invoke($init, $values);
+
+          if ($init_result === false) {
             echo "aborted\n";
             return null;
+          } else if ($init_result instanceof Module) {
+            echo "switching to Module: ".get_class($init_result)."\n";
+            $route = $init_result;
           }
 
           break;
