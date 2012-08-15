@@ -16,6 +16,7 @@ namespace mindplay\walkway;
 use Closure;
 use ArrayAccess;
 use ReflectionFunction;
+use ReflectionParameter;
 
 /**
  * This class represents an individual Route: a URL token, and a set of URL-patterns
@@ -34,6 +35,11 @@ use ReflectionFunction;
  */
 class Route implements ArrayAccess
 {
+  /**
+   * @var mixed[] map of parameter-names to values collected during traversal
+   */
+  public $vars;
+
   /**
    * @var Module the Module to which this Route belongs
    */
@@ -65,11 +71,6 @@ class Route implements ArrayAccess
    * @see Request::execute()
    */
   protected $methods = array();
-  
-  /**
-   * @var mixed[] map of parameter-names to values collected during traversal
-   */
-  protected $vars;
   
   /**
    * @param $module Module owner Module
@@ -131,13 +132,23 @@ class Route implements ArrayAccess
    */
   public function resolve($url)
   {
+    /**
+     * @var $tokens string[] list of URL tokens
+     * @var $matched bool indicates whether the tokens matched or not
+     * @var $route Route the current route (switches as we walk the URL tokens)
+     * @var $match int|bool result of preg_match() against a defined pattern
+     * @var $ref ReflectionFunction reflection of the Route initialization-function
+     * @var $mod_var ReflectionParameter reflection of Module-type to be injected
+     * @var $class string intermediary variable holding the class-name of a Module-type to be injected
+     */
+
     $tokens = is_array($url)
       ? $url
-      : array_filter(explode('/', trim($url,'/')), 'strlen');
+      : array_filter(explode('/', rtrim($url,'/')), 'strlen');
 
     $matched = true;
 
-    $route = $this;
+    $route = $this; // track the current Route, starting from $this
 
     foreach ($tokens as $index => $token) {
       echo "* resolve token {$index}: {$token}\n";
@@ -147,18 +158,21 @@ class Route implements ArrayAccess
           throw new RoutingException("invalid relative URL: {$url} - token {$index} has no parent");
         }
         $route = $route->parent;
+      } else if ($token === '.') {
+        continue; // continue from current Route
+      } else if ($token === '') {
+        $route = $route->module;
+        continue; // continue from the root-Route of the Module
       }
 
-      $patterns = $route->patterns;
-
-      if (count($patterns) === 0) {
+      if (count($route->patterns) === 0) {
         echo "dead end\n";
         return null;
       }
 
       $matched = false;
 
-      foreach ($patterns as $pattern => $init) {
+      foreach ($route->patterns as $pattern => $init) {
         echo "testing pattern: $pattern\n";
         $match = preg_match('/^'.$pattern.'$/i', $token, $values);
 
@@ -170,19 +184,32 @@ class Route implements ArrayAccess
           echo "pattern matched\n";
 
           $matched = true;
-          
-          $route = new Route($route->module, $route, $token, $route->vars);
-          
+
+          $ref = new ReflectionFunction($init);
+
+          $mod_var = null;
+
+          foreach ($ref->getParameters() as $param) {
+            if ($param->getClass() && $param->getClass()->isSubClassOf(__NAMESPACE__.'\\Module')) {
+              $mod_var = $param;
+              break;
+            }
+          }
+
+          if ($mod_var) {
+            $class = $mod_var->getClass()->name;
+            echo "switching to Module: $class\n";
+            $route = new $class($route, $token);
+            $route->vars[$mod_var->name] = $route;
+          } else {
+            $route = new Route($route->module, $route, $token, $route->vars);
+          }
+
           array_shift($values);
 
-          $init_result = $route->invoke($init, $values);
-
-          if ($init_result === false) {
+          if ($route->invoke($init, $values) === false) {
             echo "aborted\n";
             return null;
-          } else if ($init_result instanceof Module) {
-            echo "switching to Module: ".get_class($init_result)."\n";
-            $route = $init_result;
           }
 
           break;

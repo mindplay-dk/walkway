@@ -50,9 +50,10 @@ $module['blog'] = function ($route) {
       $route->get = function ($post_id) {
         echo "displaying post number {$post_id}!\n";
       };
-      $route['comments'] = function($route) {
-        echo "delegating control to CommentModule\n";
-        return new CommentModule($route);
+      $route['(comments)'] = function(CommentModule $comments, $foo) {
+        echo "delegating control to ".get_class($comments)."\n";
+        echo "captured: $foo\n";
+        echo "available vars: ".implode(', ', array_keys($comments->vars))."\n";
       };
     };
     $route['(\d+)-(\d+)'] = function ($route, $year, $month) {
