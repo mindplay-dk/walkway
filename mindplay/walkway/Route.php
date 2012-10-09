@@ -35,258 +35,262 @@ use ReflectionParameter;
  */
 class Route implements ArrayAccess
 {
-  /**
-   * @var mixed[] map of parameter-names to values collected during traversal
-   */
-  public $vars;
-
-  /**
-   * @var Module the Module to which this Route belongs
-   */
-  public $module;
-  
-  /**
-   * @var Route|null parent Route; or null if this is the root-Route.
-   */
-  public $parent;
-
-  /**
-   * @var string the token that was matched when this Route was constructed.
-   */
-  public $token;
-
-  /**
-   * @var string the (partial) URL associated with this Route.
-   */
-  public $url;
-
-  /**
-   * @var Closure[] map of patterns to Route definition-functions
-   * @see resolve()
-   */
-  protected $patterns = array();
-
-  /**
-   * @var Closure[] map of method-names to functions
-   * @see Request::execute()
-   */
-  protected $methods = array();
-  
-  /**
-   * @param $module Module owner Module
-   * @param $parent Route|null parent Route; or null if this is a root-Route.
-   * @param $token string the URL token that was matched when this Route was constructed.
-   * @param $vars mixed[] list of named values
-   */
-  public function __construct(Module $module, Route $parent=null, $token='', $vars=array())
-  {
-    $this->module = $module;
-    $this->parent = $parent;
-    $this->token = $token;
-    
-    $this->url = ($parent === null || $parent->url === '')
-      ? $token
-      : "{$parent->url}/{$token}";
-    
-    $this->vars = $vars;
-    $this->vars['route'] = $this;
-    $this->vars['module'] = $this->module;
-  }
-
-  public function offsetSet($pattern, $init) {
-    echo "define pattern: {$pattern}\n";
-    $this->patterns[$pattern] = $init;
-  }
-
-  public function offsetExists($pattern) {
-    return isset($this->patterns[$pattern]);
-  }
-
-  public function offsetUnset($pattern) {
-    unset($this->patterns[$pattern]);
-  }
-
-  public function offsetGet($pattern) {
-    return $this->patterns[$pattern];
-  }
-  
-  public function __get($name)
-  {
-    $name = strtolower($name);
-    return isset($this->methods[$name]) ? $this->methods[$name] : null;
-  }
-
-  public function __set($name, $value)
-  {
-    echo "define method: {$name}\n";
-    $name = strtolower($name);
-    $this->methods[$name] = $value;
-  }
-
-  /**
-   * Follow a (relative) URL, walking the path from this Route to a destination Route.
-   *
-   * @param $url string relative URL
-   * @return Route|null returns the resolved Route, or null if no Route was matched
-   * @throws RoutingException if a bad Route is encountered
-   */
-  public function resolve($url)
-  {
     /**
-     * @var $tokens string[] list of URL tokens
-     * @var $matched bool indicates whether the tokens matched or not
-     * @var $route Route the current route (switches as we walk the URL tokens)
-     * @var $match int|bool result of preg_match() against a defined pattern
-     * @var $ref ReflectionFunction reflection of the Route initialization-function
-     * @var $mod_var ReflectionParameter reflection of Module-type to be injected
-     * @var $class string intermediary variable holding the class-name of a Module-type to be injected
+     * @var mixed[] map of parameter-names to values collected during traversal
      */
+    public $vars;
 
-    $tokens = is_array($url)
-      ? $url
-      : array_filter(explode('/', rtrim($url,'/')), 'strlen');
+    /**
+     * @var Module the Module to which this Route belongs
+     */
+    public $module;
 
-    $matched = true;
+    /**
+     * @var Route|null parent Route; or null if this is the root-Route.
+     */
+    public $parent;
 
-    $route = $this; // track the current Route, starting from $this
+    /**
+     * @var string the token that was matched when this Route was constructed.
+     */
+    public $token;
 
-    foreach ($tokens as $index => $token) {
-      echo "* resolve token {$index}: {$token}\n";
+    /**
+     * @var string the (partial) URL associated with this Route.
+     */
+    public $url;
 
-      if ($token === '..') {
-        if ($this->parent === null) {
-          throw new RoutingException("invalid relative URL: {$url} - token {$index} has no parent");
-        }
-        $route = $route->parent;
-      } else if ($token === '.') {
-        continue; // continue from current Route
-      } else if ($token === '') {
-        $route = $route->module;
-        continue; // continue from the root-Route of the Module
-      }
+    /**
+     * @var Closure[] map of patterns to Route definition-functions
+     * @see resolve()
+     */
+    protected $patterns = array();
 
-      if (count($route->patterns) === 0) {
-        echo "dead end\n";
-        return null;
-      }
+    /**
+     * @var Closure[] map of method-names to functions
+     * @see Request::execute()
+     */
+    protected $methods = array();
 
-      $matched = false;
+    /**
+     * @param $module Module owner Module
+     * @param $parent Route|null parent Route; or null if this is a root-Route.
+     * @param $token string the URL token that was matched when this Route was constructed.
+     * @param $vars mixed[] list of named values
+     */
+    public function __construct(Module $module, Route $parent = null, $token = '', $vars = array())
+    {
+        $this->module = $module;
+        $this->parent = $parent;
+        $this->token = $token;
 
-      foreach ($route->patterns as $pattern => $init) {
-        echo "testing pattern: $pattern\n";
-        $match = preg_match('/^'.$pattern.'$/i', $token, $values);
+        $this->url = ($parent === null || $parent->url === '')
+            ? $token
+            : "{$parent->url}/{$token}";
 
-        if ($match === false) {
-          throw new RoutingException('invalid pattern "' . $pattern, $init);
-        }
+        $this->vars = $vars;
+        $this->vars['route'] = $this;
+        $this->vars['module'] = $this->module;
+    }
 
-        if ($match === 1) {
-          echo "pattern matched\n";
+    public function offsetSet($pattern, $init)
+    {
+        echo "define pattern: {$pattern}\n";
+        $this->patterns[$pattern] = $init;
+    }
 
-          $matched = true;
+    public function offsetExists($pattern)
+    {
+        return isset($this->patterns[$pattern]);
+    }
 
-          $ref = new ReflectionFunction($init);
+    public function offsetUnset($pattern)
+    {
+        unset($this->patterns[$pattern]);
+    }
 
-          $mod_var = null;
+    public function offsetGet($pattern)
+    {
+        return $this->patterns[$pattern];
+    }
 
-          foreach ($ref->getParameters() as $param) {
-            if ($param->getClass() && $param->getClass()->isSubClassOf(__NAMESPACE__.'\\Module')) {
-              $mod_var = $param;
-              break;
+    public function __get($name)
+    {
+        $name = strtolower($name);
+        return isset($this->methods[$name]) ? $this->methods[$name] : null;
+    }
+
+    public function __set($name, $value)
+    {
+        echo "define method: {$name}\n";
+        $name = strtolower($name);
+        $this->methods[$name] = $value;
+    }
+
+    /**
+     * Follow a (relative) URL, walking the path from this Route to a destination Route.
+     *
+     * @param $url string relative URL
+     * @return Route|null returns the resolved Route, or null if no Route was matched
+     * @throws RoutingException if a bad Route is encountered
+     */
+    public function resolve($url)
+    {
+        /**
+         * @var $tokens string[] list of URL tokens
+         * @var $matched bool indicates whether the tokens matched or not
+         * @var $route Route the current route (switches as we walk the URL tokens)
+         * @var $match int|bool result of preg_match() against a defined pattern
+         * @var $ref ReflectionFunction reflection of the Route initialization-function
+         * @var $mod_var ReflectionParameter reflection of Module-type to be injected
+         * @var $class string intermediary variable holding the class-name of a Module-type to be injected
+         */
+
+        $tokens = is_array($url)
+            ? $url
+            : array_filter(explode('/', rtrim($url, '/')), 'strlen');
+
+        $matched = true;
+
+        $route = $this; // track the current Route, starting from $this
+
+        foreach ($tokens as $index => $token) {
+            echo "* resolve token {$index}: {$token}\n";
+
+            if ($token === '..') {
+                if ($this->parent === null) {
+                    throw new RoutingException("invalid relative URL: {$url} - token {$index} has no parent");
+                }
+                $route = $route->parent;
+            } else if ($token === '.') {
+                continue; // continue from current Route
+            } elseif ($token === '') {
+                    $route = $route->module;
+                    continue; // continue from the root-Route of the Module
             }
-          }
 
-          if ($mod_var) {
-            $class = $mod_var->getClass()->name;
-            echo "switching to Module: $class\n";
-            $route = new $class($route, $token);
-            $route->vars[$mod_var->name] = $route;
-          } else {
-            $route = new Route($route->module, $route, $token, $route->vars);
-          }
+            if (count($route->patterns) === 0) {
+                echo "dead end\n";
+                return null;
+            }
 
-          array_shift($values);
+            $matched = false;
 
-          if ($route->invoke($init, $values) === false) {
-            echo "aborted\n";
-            return null;
-          }
+            foreach ($route->patterns as $pattern => $init) {
+                echo "testing pattern: $pattern\n";
+                $match = preg_match('/^' . $pattern . '$/i', $token, $values);
 
-          break;
+                if ($match === false) {
+                    throw new RoutingException('invalid pattern "' . $pattern, $init);
+                }
+
+                if ($match === 1) {
+                    echo "pattern matched\n";
+
+                    $matched = true;
+
+                    $ref = new ReflectionFunction($init);
+
+                    $mod_var = null;
+
+                    foreach ($ref->getParameters() as $param) {
+                        if ($param->getClass() && $param->getClass()->isSubClassOf(__NAMESPACE__ . '\\Module')) {
+                            $mod_var = $param;
+                            break;
+                        }
+                    }
+
+                    if ($mod_var) {
+                        $class = $mod_var->getClass()->name;
+                        echo "switching to Module: $class\n";
+                        $route = new $class($route, $token);
+                        $route->vars[$mod_var->name] = $route;
+                    } else {
+                        $route = new Route($route->module, $route, $token, $route->vars);
+                    }
+
+                    array_shift($values);
+
+                    if ($route->invoke($init, $values) === false) {
+                        echo "aborted\n";
+                        return null;
+                    }
+
+                    break;
+                }
+            }
         }
-      }
+
+        return $matched ? $route : null;
     }
 
-    return $matched ? $route : null;
-  }
-
-  /**
-   * @param $method string name of HTTP method-handler to execute (e.g. 'get', 'put', 'post', 'delete', etc.)
-   * @return mixed|bool the value returned by the HTTP method-handler; true if the method-handler returned
-   *                    no value - or false if the method-handler was not found (or returned false)
-   */
-  public function execute($method='get')
-  {
-    $func = $this->__get($method);
-
-    if ($func === null) {
-      return false; // method-handler not found
-    }
-
-    $result = $this->invoke($func);
-
-    return $result === null
-      ? true // method-handler executed but returned no value
-      : $result; // method-handler returned a result
-  }
-
-  /**
-   * Invoke a function using variables collected during traversal, while filling
-   * any missing parameters with values from a given set of nameless parameters -
-   * as parameters are identified, they are added to the list of named variables.
-   *
-   * @param Closure $func the function to be invoked.
-   * @param mixed[] $values additional nameless values to be identified
-   * @return mixed the value returned by the invoked function
-   * @throws InvocationException
-   * @see $vars
-   */
-  protected function invoke($func, $values=array())
-  {
     /**
-     * @var $value_index int the index of the next nameless value to use from $values
-     * @var $params mixed[] the list of parameters to be applied to $func
-     * @var $last_index int the index of the last nameless value
+     * @param $method string name of HTTP method-handler to execute (e.g. 'get', 'put', 'post', 'delete', etc.)
+     * @return mixed|bool the value returned by the HTTP method-handler; true if the method-handler returned
+     *                    no value - or false if the method-handler was not found (or returned false)
      */
+    public function execute($method = 'get')
+    {
+        $func = $this->__get($method);
 
-    $fn = new ReflectionFunction($func);
-
-    $value_index = -1;
-
-    $params = array();
-
-    $last_index = count($values)-1;
-
-    foreach ($fn->getParameters() as $param) {
-      if (array_key_exists($param->name, $this->vars)) {
-        // fill parameter using named value:
-        $params[] = $this->vars[$param->name];
-      } else {
-        // fill parameter using nameless value:
-        $value_index++;
-        if ($value_index > $last_index) {
-          throw new InvocationException('insufficient nameless values to fill the parameter-list', $func);
+        if ($func === null) {
+            return false; // method-handler not found
         }
-        $params[] = $values[$value_index];
-        // add to list of named values:
-        $this->vars[$param->name] = $values[$value_index];
-      }
+
+        $result = $this->invoke($func);
+
+        return $result === null
+            ? true // method-handler executed but returned no value
+            : $result; // method-handler returned a result
     }
 
-    if ($value_index !== $last_index) {
-      throw new InvocationException('wrong parameter-count: ' . abs($error) . ' too ' . ($error>0 ? 'many' : 'few'), $func);
-    }
+    /**
+     * Invoke a function using variables collected during traversal, while filling
+     * any missing parameters with values from a given set of nameless parameters -
+     * as parameters are identified, they are added to the list of named variables.
+     *
+     * @param Closure $func the function to be invoked.
+     * @param mixed[] $values additional nameless values to be identified
+     * @return mixed the value returned by the invoked function
+     * @throws InvocationException
+     * @see $vars
+     */
+    protected function invoke($func, $values = array())
+    {
+        /**
+         * @var $value_index int the index of the next nameless value to use from $values
+         * @var $params mixed[] the list of parameters to be applied to $func
+         * @var $last_index int the index of the last nameless value
+         */
 
-    return call_user_func_array($func, $params);
-  }
+        $fn = new ReflectionFunction($func);
+
+        $value_index = -1;
+
+        $params = array();
+
+        $last_index = count($values) - 1;
+
+        foreach ($fn->getParameters() as $param) {
+            if (array_key_exists($param->name, $this->vars)) {
+                // fill parameter using named value:
+                $params[] = $this->vars[$param->name];
+            } else {
+                // fill parameter using nameless value:
+                $value_index++;
+                if ($value_index > $last_index) {
+                    throw new InvocationException('insufficient nameless values to fill the parameter-list', $func);
+                }
+                $params[] = $values[$value_index];
+                // add to list of named values:
+                $this->vars[$param->name] = $values[$value_index];
+            }
+        }
+
+        if ($value_index !== $last_index) {
+            throw new InvocationException('wrong parameter-count: ' . abs($error) . ' too ' . ($error>0 ? 'many' : 'few'), $func);
+        }
+
+        return call_user_func_array($func, $params);
+    }
 }

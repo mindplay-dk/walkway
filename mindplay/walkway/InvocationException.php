@@ -7,4 +7,5 @@ namespace mindplay\walkway;
  * @see Route::invoke()
  */
 class InvocationException extends FunctionException
-{}
+{
+}
