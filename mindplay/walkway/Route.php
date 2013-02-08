@@ -164,6 +164,8 @@ class Route implements ArrayAccess
          * @var $ref ReflectionFunction reflection of the Route initialization-function
          * @var $mod_param ReflectionParameter reflection of Module-type to be injected
          * @var $class string intermediary variable holding the class-name of a Module-type to be injected
+         * @var $named_vars int number of named substrings captured in regular expression
+         * @var $values string[] list of nameless substrings captured in regular expression
          */
 
         $tokens = is_array($url)
