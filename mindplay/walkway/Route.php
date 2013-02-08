@@ -93,33 +93,53 @@ class Route implements ArrayAccess
         $this->vars['module'] = $this->module;
     }
 
+    /**
+     * @see ArrayAccess::offsetSet()
+     */
     public function offsetSet($pattern, $init)
     {
         echo "define pattern: {$pattern}\n";
         $this->patterns[$pattern] = $init;
     }
 
+    /**
+     * @see ArrayAccess::offsetExists()
+     */
     public function offsetExists($pattern)
     {
         return isset($this->patterns[$pattern]);
     }
 
+    /**
+     * @see ArrayAccess::offsetUnset()
+     */
     public function offsetUnset($pattern)
     {
         unset($this->patterns[$pattern]);
     }
 
+    /**
+     * @see ArrayAccess::offsetGet()
+     */
     public function offsetGet($pattern)
     {
         return $this->patterns[$pattern];
     }
-
+    
+    /**
+     * @return Closure
+     */
     public function __get($name)
     {
         $name = strtolower($name);
+        
         return isset($this->methods[$name]) ? $this->methods[$name] : null;
     }
-
+    
+    /**
+     * @param string $name
+     * @param Closure $value
+     */
     public function __set($name, $value)
     {
         echo "define method: {$name}\n";
@@ -142,7 +162,7 @@ class Route implements ArrayAccess
          * @var $route Route the current route (switches as we walk the URL tokens)
          * @var $match int|bool result of preg_match() against a defined pattern
          * @var $ref ReflectionFunction reflection of the Route initialization-function
-         * @var $mod_var ReflectionParameter reflection of Module-type to be injected
+         * @var $mod_param ReflectionParameter reflection of Module-type to be injected
          * @var $class string intermediary variable holding the class-name of a Module-type to be injected
          */
 
@@ -165,8 +185,8 @@ class Route implements ArrayAccess
             } else if ($token === '.') {
                 continue; // continue from current Route
             } elseif ($token === '') {
-                    $route = $route->module;
-                    continue; // continue from the root-Route of the Module
+                $route = $route->module;
+                continue; // continue from the root-Route of the Module
             }
 
             if (count($route->patterns) === 0) {
@@ -178,10 +198,10 @@ class Route implements ArrayAccess
 
             foreach ($route->patterns as $pattern => $init) {
                 echo "testing pattern: $pattern\n";
-                $match = preg_match('/^' . $pattern . '$/i', $token, $values);
+                $match = preg_match('/^' . $pattern . '$/i', $token, $matches);
 
                 if ($match === false) {
-                    throw new RoutingException('invalid pattern "' . $pattern, $init);
+                    throw new RoutingException('invalid pattern: ' . $pattern . ' (preg_match returned false)', $init);
                 }
 
                 if ($match === 1) {
@@ -191,25 +211,47 @@ class Route implements ArrayAccess
 
                     $ref = new ReflectionFunction($init);
 
-                    $mod_var = null;
+                    $mod_param = null;
 
                     foreach ($ref->getParameters() as $param) {
                         if ($param->getClass() && $param->getClass()->isSubClassOf(__NAMESPACE__ . '\\Module')) {
-                            $mod_var = $param;
+                            $mod_param = $param;
                             break;
                         }
                     }
 
-                    if ($mod_var) {
-                        $class = $mod_var->getClass()->name;
+                    if ($mod_param) {
+                        $class = $mod_param->getClass()->name;
                         echo "switching to Module: $class\n";
                         $route = new $class($route, $token);
-                        $route->vars[$mod_var->name] = $route;
+                        $route->vars[$mod_param->name] = $route;
                     } else {
                         $route = new Route($route->module, $route, $token, $route->vars);
                     }
-
-                    array_shift($values);
+                    
+                    array_shift($matches);
+                    
+                    $values = array();
+                    
+                    $named_vars = 0;
+                    
+                    foreach ($matches as $key => $value) {
+                        if (is_int($key)) {
+                            $values[] = $value;
+                        } else {
+                            echo 'captured named subtring: ' . $key . "\n";
+                            $route->vars[$key] = $value;
+                            $named_vars += 1;
+                        }
+                    }
+                    
+                    if ($named_vars > 0) {
+                        if ($named_vars !== count($values)) {
+                            throw new RoutingException('invalid pattern: ' . $pattern . ' (mix of nameless and named substring captures)', $init);
+                        }
+                        
+                        $values = array();
+                    }
 
                     if ($route->invoke($init, $values) === false) {
                         echo "aborted\n";
@@ -279,6 +321,7 @@ class Route implements ArrayAccess
                 // fill parameter using nameless value:
                 $value_index++;
                 if ($value_index > $last_index) {
+                    var_dump(array_keys($this->vars), $param->name);
                     throw new InvocationException('insufficient nameless values to fill the parameter-list', $func);
                 }
                 $params[] = $values[$value_index];
@@ -288,6 +331,8 @@ class Route implements ArrayAccess
         }
 
         if ($value_index !== $last_index) {
+            $error = $value_index - $last_index;
+            
             throw new InvocationException('wrong parameter-count: ' . abs($error) . ' too ' . ($error>0 ? 'many' : 'few'), $func);
         }
 
