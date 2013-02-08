@@ -27,11 +27,11 @@ use ReflectionParameter;
  * It also implements a collection of HTTP method-handlers (e.g. GET, PUT, POST, DELETE)
  * which can be defined and accessed using get/set magic methods.
  *
- * @property Closure get
- * @property Closure head
- * @property Closure post
- * @property Closure put
- * @property Closure delete
+ * @property Closure|null $get
+ * @property Closure|null $head
+ * @property Closure|null $post
+ * @property Closure|null $put
+ * @property Closure|null $delete
  */
 class Route implements ArrayAccess
 {
@@ -340,4 +340,32 @@ class Route implements ArrayAccess
 
         return call_user_func_array($func, $params);
     }
+    
+    /*
+    public function __destruct()
+    {
+        unset($this->module);
+        unset($this->parent);
+        
+        foreach ($this->vars as $key => $value) {
+            unset($this->vars[$key]);
+        }
+        
+        unset($this->vars);
+        
+        foreach ($this->patterns as $key => $value) {
+            unset($this->patterns[$key]);
+        }
+        
+        unset($this->patterns);
+        
+        foreach ($this->methods as $key => $value) {
+            unset($this->methods[$key]);
+        }
+        
+        unset($this->methods);
+        
+        echo "- OUT OF SCOPE -\n";
+    }
+    */
 }
