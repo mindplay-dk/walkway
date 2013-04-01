@@ -4,6 +4,8 @@ namespace mindplay\walkway;
 
 /**
  * This class represents the root of an independent collection of Routes.
+ *
+ * @see Route
  */
 class Module extends Route
 {
@@ -20,4 +22,9 @@ class Module extends Route
     public function init()
     {
     }
+    
+    /**
+     * @var Closure event-handler for diagnostic messages
+     */
+    public $onLog;
 }

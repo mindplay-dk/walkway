@@ -94,11 +94,22 @@ class Route implements ArrayAccess
     }
 
     /**
+     * @param string $message
+     * @see $onLog
+     */
+    protected function log($message)
+    {
+        if ($log = $this->module->onLog) {
+            $log($message);
+        }
+    }
+
+    /**
      * @see ArrayAccess::offsetSet()
      */
     public function offsetSet($pattern, $init)
     {
-        echo "define pattern: {$pattern}\n";
+        $this->log("define pattern: {$pattern}");
         $this->patterns[$pattern] = $init;
     }
 
@@ -142,7 +153,7 @@ class Route implements ArrayAccess
      */
     public function __set($name, $value)
     {
-        echo "define method: {$name}\n";
+        $this->log("define method: {$name}");
         $name = strtolower($name);
         $this->methods[$name] = $value;
     }
@@ -177,7 +188,7 @@ class Route implements ArrayAccess
         $route = $this; // track the current Route, starting from $this
 
         foreach ($tokens as $index => $token) {
-            echo "* resolve token {$index}: {$token}\n";
+            $this->log("* resolve token {$index}: {$token}");
 
             if ($token === '..') {
                 if ($this->parent === null) {
@@ -192,14 +203,14 @@ class Route implements ArrayAccess
             }
 
             if (count($route->patterns) === 0) {
-                echo "dead end\n";
+                $this->log("dead end");
                 return null;
             }
 
             $matched = false;
 
             foreach ($route->patterns as $pattern => $init) {
-                echo "testing pattern: $pattern\n";
+                $this->log("testing pattern: $pattern");
                 $match = preg_match('/^' . $pattern . '$/i', $token, $matches);
 
                 if ($match === false) {
@@ -207,7 +218,7 @@ class Route implements ArrayAccess
                 }
 
                 if ($match === 1) {
-                    echo "pattern matched\n";
+                    $this->log("pattern matched");
 
                     $matched = true;
 
@@ -224,7 +235,7 @@ class Route implements ArrayAccess
 
                     if ($mod_param) {
                         $class = $mod_param->getClass()->name;
-                        echo "switching to Module: $class\n";
+                        $this->log("switching to Module: $class");
                         $route = new $class($route, $token);
                         $route->vars[$mod_param->name] = $route;
                     } else {
@@ -241,7 +252,7 @@ class Route implements ArrayAccess
                         if (is_int($key)) {
                             $values[] = $value;
                         } else {
-                            echo 'captured named subtring: ' . $key . "\n";
+                            $this->log('captured named subtring: ' . $key);
                             $route->vars[$key] = $value;
                             $named_vars += 1;
                         }
@@ -256,7 +267,7 @@ class Route implements ArrayAccess
                     }
 
                     if ($route->invoke($init, $values) === false) {
-                        echo "aborted\n";
+                        $this->log("aborted");
                         return null;
                     }
 

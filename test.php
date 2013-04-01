@@ -43,6 +43,10 @@ class CommentModule extends Module
 
 $module = new Module;
 
+$module->onLog = function($message) {
+    echo "-> $message\n";
+};
+
 $module['blog'] = function ($route) {
     $route['posts'] = function ($route) {
         $route['(\d+)'] = function ($route, $post_id) {
