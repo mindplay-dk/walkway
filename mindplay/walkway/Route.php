@@ -97,7 +97,7 @@ class Route implements ArrayAccess
      * @param string $message
      * @see $onLog
      */
-    protected function log($message)
+    public function log($message)
     {
         if ($log = $this->module->onLog) {
             $log($message);
@@ -210,7 +210,18 @@ class Route implements ArrayAccess
             $matched = false;
 
             foreach ($route->patterns as $pattern => $init) {
+                // apply pattern-substitutions:
+                
+                foreach ($this->module->substitutions as $subpattern => $sub) {
+                    $pattern = preg_replace_callback($subpattern, $sub, $pattern);
+                    
+                    if ($pattern === null) {
+                        throw new RoutingException('invalid substitution pattern: ' . $subpattern . ' (preg_replace_callback returned null)', $init);
+                    }
+                }
+                
                 $this->log("testing pattern: $pattern");
+                
                 $match = preg_match('/^' . $pattern . '$/i', $token, $matches);
 
                 if ($match === false) {
