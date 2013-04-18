@@ -19,6 +19,8 @@ class CommentModule extends Module
 {
     public function init()
     {
+        parent::init();
+        
         $this['submit'] = function ($route) {
             $route->get = function ($route, $module) {
                 $route->log("displaying comment submission form");
