@@ -18,8 +18,9 @@ in applications with a large number of routes, as modules that aren't
 visited while resolving a route, don't need to be loaded at all.
 
 The codebase is very small, very simple, and very open-ended - you can do
-both good and evil with this library. To understand how to make the most
-of it, please read the documentation below.
+both good and evil with this library.
+
+To understand how to make the most of it, please read the documentation below.
 
 NOTE: THIS IS STILL IN DEVELOPMENT, AND MINOR API CHANGES MAY STILL OCCUR.
 
@@ -151,6 +152,9 @@ of creating and routing to a nested Module.
 
 (TODO: explain this in more detail.)
 
+Note that there's a good reason why URL-creation is not part of this library -
+this is explained at the end of this document.
+
 
 Evaluating Routes
 =================
@@ -228,7 +232,45 @@ code uses type-hints - for example:
 This also provides extra safety from inadvertently getting your parameters/types
 mixed up.
 
+
+Creating URLs
+=============
+
+This library does not provide an abstraction for URL-creation (commonly referred
+to as "named routes" in various frameworks) for a couple of reasons.
+
+First off, "named routes" usually come at the cost of IDE support. It also forces
+you to load and define all your routes in advance, which can be inefficient.
+
+But most importantly, it has no real value - because the tasks of creating URLs
+and resolving URLs only really have one thing in common: the name of the route.
+Typically, everything else about a URL is variable, and you end up having to
+repeat parameter-names in a way that cannot be verified.
+
+Contrast the following fictive nonsense:
+
+    $url = $module->create('show_archive', array('year' => '2013', 'month' => '04));
+
+With the following real beauty:
+
+    $url = $module->show_archive_url('2013', '04');
+
+The latter is half the amount of typing, it's easier to read - an IDE can provide
+auto-completions, and you can perform inspections (static analysis) on the code
+if you have to change the name or parameters.
+
+Also, because this is a real function, and not some kind of abstraction, you can
+use whatever code is necessary to create URLs, create different URLs under different
+circumstances, use arguments of different types (even entities, if needed), and so on.
+
+The advantages of URL creation being free from the limitations of even the best, most
+complex abstractions, are too numerous to ignore - plus, at the end of the day, try to
+view URL creation for what it really is: a string template. You're creating a *string*.
+Do you really need a framework for that? Simple solutions for simple problems, please!
+
+
 Enjoy!
+======
 
 (TODO: add a front-controller example.)
 
