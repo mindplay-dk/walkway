@@ -2,6 +2,8 @@
 
 namespace mindplay\walkway;
 
+use Closure;
+
 /**
  * This class represents the root of an independent collection of Routes.
  *
