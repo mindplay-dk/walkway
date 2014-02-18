@@ -6,7 +6,7 @@ header('Content-type: text/plain');
 
 spl_autoload_register(
     function ($class) {
-        include __DIR__ . '/' . $class . '.php';
+        include __DIR__ . '/' . strtr($class, '\\', DIRECTORY_SEPARATOR) . '.php';
     }
 );
 
