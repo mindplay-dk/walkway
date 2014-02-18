@@ -3,6 +3,8 @@ Walkway
 
 Elegant, modular routing for PHP - inspired by [vlucas][1]/[bulletphp][2].
 
+[![Build Status](https://travis-ci.org/mindplay-dk/walkway.png)](https://travis-ci.org/mindplay-dk/walkway)
+
 Note that this is not a framework, and not a micro-framework - this library
 exclusively deals with routing, and deliberately does not provide any kind
 of front-controller, request/response or controller/action abstraction,
