@@ -6,7 +6,6 @@
  *
  * A modular router for PHP.
  *
- * @version 0.1
  * @author Rasmus Schultz <http://blog.mindplay.dk>
  * @license GPL3 <http://www.gnu.org/licenses/gpl-3.0.txt>
  */
@@ -19,13 +18,13 @@ use ReflectionFunction;
 use ReflectionParameter;
 
 /**
- * This class represents an individual Route: a URL token, and a set of URL-patterns
- * mapped to nested Route definition-functions.
+ * This class represents an individual Route: a part of a path (referred to as a token)
+ * and a set of patterns to be matched and mapped against nested Route definition-functions.
  *
  * It implements ArrayAccess as the method for defining patterns/functions.
  *
  * It also implements a collection of HTTP method-handlers (e.g. GET, PUT, POST, DELETE)
- * which can be defined and accessed using get/set magic methods.
+ * which can be defined and accessed via e.g. <code>$get</code> and other properties.
  *
  * @property Closure|null $get
  * @property Closure|null $head
@@ -56,9 +55,9 @@ class Route implements ArrayAccess
     public $token;
 
     /**
-     * @var string the (partial) URL associated with this Route.
+     * @var string the (partial) path associated with this Route.
      */
-    public $url;
+    public $path;
 
     /**
      * @var Closure[] map of patterns to Route definition-functions
@@ -75,7 +74,7 @@ class Route implements ArrayAccess
     /**
      * @param $module Module owner Module
      * @param $parent Route|null parent Route; or null if this is a root-Route.
-     * @param $token string the URL token that was matched when this Route was constructed.
+     * @param $token string the token (partial path) that was matched when this Route was constructed.
      * @param $vars mixed[] list of named values
      */
     public function __construct(Module $module, Route $parent = null, $token = '', $vars = array())
@@ -84,9 +83,9 @@ class Route implements ArrayAccess
         $this->parent = $parent;
         $this->token = $token;
 
-        $this->url = ($parent === null || $parent->url === '')
+        $this->path = ($parent === null || $parent->path === '')
             ? $token
-            : "{$parent->url}/{$token}";
+            : "{$parent->path}/{$token}";
 
         $this->vars = $vars;
         $this->vars['route'] = $this;
@@ -136,8 +135,9 @@ class Route implements ArrayAccess
     {
         return $this->patterns[$pattern];
     }
-    
+
     /**
+     * @param string $name
      * @return Closure
      */
     public function __get($name)
@@ -159,55 +159,47 @@ class Route implements ArrayAccess
     }
 
     /**
-     * Follow a (relative) URL, walking the path from this Route to a destination Route.
+     * Follow a (relative) path, walking from this Route to a destination Route.
      *
-     * @param $url string relative URL
+     * @param $path string relative path
+     *
      * @return Route|null returns the resolved Route, or null if no Route was matched
+     *
      * @throws RoutingException if a bad Route is encountered
      */
-    public function resolve($url)
+    public function resolve($path)
     {
         /**
-         * @var $tokens string[] list of URL tokens
-         * @var $matched bool indicates whether the tokens matched or not
-         * @var $route Route the current route (switches as we walk the URL tokens)
-         * @var $match int|bool result of preg_match() against a defined pattern
-         * @var $ref ReflectionFunction reflection of the Route initialization-function
-         * @var $mod_param ReflectionParameter reflection of Module-type to be injected
-         * @var $class string intermediary variable holding the class-name of a Module-type to be injected
-         * @var $named_vars int number of named substrings captured in regular expression
-         * @var $values string[] list of nameless substrings captured in regular expression
+         * @var bool                $matched    indicates whether the last partial path matched a pattern
+         * @var Route               $route      the current route (switches as we walk through each token in the path)
+         * @var int|bool            $match      result of preg_match() against a defined pattern
+         * @var ReflectionFunction  $ref        reflection of the Route initialization-function
+         * @var ReflectionParameter $mod_param  reflection of Module-type to be injected
+         * @var string              $class      intermediary variable holding the class-name of a Module-type to be injected
+         * @var int                 $named_vars number of named substrings captured in regular expression
+         * @var string[]            $values     list of nameless substrings captured in regular expression
+         * @var string              $part       partial path being resolved in the current iteration
          */
 
-        $tokens = is_array($url)
-            ? $url
-            : array_filter(explode('/', rtrim($url, '/')), 'strlen');
+        $part = trim($path, '/'); // trim leading/trailing slashes
 
-        $matched = true;
+        $matched = true; // assume success (empty path will successfully resolve as root)
 
         $route = $this; // track the current Route, starting from $this
 
-        foreach ($tokens as $index => $token) {
-            $this->log("* resolve token {$index}: {$token}");
+        $iteration = 0;
 
-            if ($token === '..') {
-                if ($this->parent === null) {
-                    throw new RoutingException("invalid relative URL: {$url} - token {$index} has no parent");
-                }
-                $route = $route->parent;
-            } else if ($token === '.') {
-                continue; // continue from current Route
-            } elseif ($token === '') {
-                $route = $route->module;
-                continue; // continue from the root-Route of the Module
-            }
+        while ($part) {
+            $iteration += 1;
+
+            $this->log("* resolving partial path '{$part}' (iteration {$iteration} of path '{$path}')");
 
             if (count($route->patterns) === 0) {
-                $this->log("dead end");
+                $this->log("end of routes - no match found");
                 return null;
             }
 
-            $matched = false;
+            $matched = false; // assume failure
 
             foreach ($route->patterns as $pattern => $init) {
                 // apply pattern-substitutions:
@@ -216,74 +208,92 @@ class Route implements ArrayAccess
                     $pattern = preg_replace_callback($subpattern, $sub, $pattern);
                     
                     if ($pattern === null) {
-                        throw new RoutingException('invalid substitution pattern: ' . $subpattern . ' (preg_replace_callback returned null)', $init);
+                        throw new RoutingException("invalid substitution pattern: '{$subpattern}' (preg_replace_callback returned null)", $init);
                     }
                 }
                 
-                $this->log("testing pattern: $pattern");
+                $this->log("testing pattern '{$pattern}'");
                 
-                $match = preg_match('/^' . $pattern . '$/i', $token, $matches);
+                $match = @preg_match('#^' . $pattern . '(?=$|/)#i', $part, $matches);
 
                 if ($match === false) {
-                    throw new RoutingException('invalid pattern: ' . $pattern . ' (preg_match returned false)', $init);
+                    throw new RoutingException("invalid pattern '{$pattern}' (preg_match returned false)", $init);
                 }
 
-                if ($match === 1) {
-                    $this->log("pattern matched");
+                if ($match !== 1) {
+                    continue; // this pattern was not a match - continue with the next pattern
+                }
 
-                    $matched = true;
+                $matched = true;
 
-                    $ref = new ReflectionFunction($init);
+                $token = array_shift($matches);
 
-                    $mod_param = null;
+                $this->log("token '{$token}' matched by pattern '{$pattern}'");
 
-                    foreach ($ref->getParameters() as $param) {
-                        if ($param->getClass() && $param->getClass()->isSubClassOf(__NAMESPACE__ . '\\Module')) {
-                            $mod_param = $param;
-                            break;
-                        }
+                // look for a Module type-hint in the arguments:
+
+                $ref = new ReflectionFunction($init);
+
+                $mod_param = null;
+
+                foreach ($ref->getParameters() as $param) {
+                    if ($param->getClass() && $param->getClass()->isSubClassOf(__NAMESPACE__ . '\\Module')) {
+                        $mod_param = $param;
+                        break;
                     }
+                }
 
-                    if ($mod_param) {
-                        $class = $mod_param->getClass()->name;
-                        $this->log("switching to Module: $class");
-                        $route = new $class($route, $token);
-                        $route->vars[$mod_param->name] = $route;
+                if ($mod_param) {
+                    // switch to the Module found in the arguments:
+                    $class = $mod_param->getClass()->name;
+                    $this->log("switching to Module: {$class}");
+                    $route = new $class($route, $token);
+                    $route->vars[$mod_param->name] = $route;
+                } else {
+                    // switch to a nested Route:
+                    $route = new Route($route->module, $route, $token, $route->vars);
+                }
+
+                $values = array();
+
+                // identify named variables or nameless values:
+
+                $named_vars = 0;
+
+                foreach ($matches as $key => $value) {
+                    if (is_int($key)) {
+                        $values[] = $value;
                     } else {
-                        $route = new Route($route->module, $route, $token, $route->vars);
+                        $this->log("captured named variable '{$key}' as '{$value}'");
+                        $route->vars[$key] = $value;
+                        $named_vars += 1;
                     }
-                    
-                    array_shift($matches);
-                    
-                    $values = array();
-                    
-                    $named_vars = 0;
-                    
-                    foreach ($matches as $key => $value) {
-                        if (is_int($key)) {
-                            $values[] = $value;
-                        } else {
-                            $this->log('captured named subtring: ' . $key);
-                            $route->vars[$key] = $value;
-                            $named_vars += 1;
-                        }
-                    }
-                    
-                    if ($named_vars > 0) {
-                        if ($named_vars !== count($values)) {
-                            throw new RoutingException('invalid pattern: ' . $pattern . ' (mix of nameless and named substring captures)', $init);
-                        }
-                        
-                        $values = array();
-                    }
-
-                    if ($route->invoke($init, $values) === false) {
-                        $this->log("aborted");
-                        return null;
-                    }
-
-                    break;
                 }
+
+                if ($named_vars > 0) {
+                    if ($named_vars !== count($values)) {
+                        throw new RoutingException("invalid pattern '{$pattern}' (mix of nameless and named substring captures)", $init);
+                    }
+
+                    $values = array();
+                }
+
+                // initialize the nested Route:
+
+                if ($route->invoke($init, $values) === false) {
+                    // the function explicitly aborted the route
+                    $this->log("aborted");
+                    return null;
+                }
+
+                break; // skip any remaining patterns
+            }
+
+            if (isset($token)) {
+                // removed previous token from remaining part of path:
+                $part = substr($part, strlen($token) + 1);
+            } else {
+                break;
             }
         }
 

@@ -8,6 +8,10 @@ exclusively deals with routing, and deliberately does not provide any kind
 of front-controller, request/response or controller/action abstraction,
 error-handling, or any other framework-like feature.
 
+This makes the library very open-ended - you can using the routing facility
+to route whatever you want (anything that resembles a path) to whatever you
+want. (e.g. controllers, other scripts, another framework or CMS, anything.)
+
 Unlike most routers using this style/approach, this router is functional -
 which means the routes are actually being defined as the resolver "walks"
 them, one level at a time, which is practically inifinitely scalable.
@@ -22,8 +26,6 @@ both good and evil with this library.
 
 To understand how to make the most of it, please read the documentation below.
 
-NOTE: THIS IS STILL IN DEVELOPMENT, AND MINOR API CHANGES MAY STILL OCCUR.
-
 
 Defining Routes
 ===============
@@ -34,7 +36,7 @@ You define patterns by using array-syntax to configure callback-functions,
 which may define nested sub-patterns, and so on.
 
 A collection of Routes is called a Module - you can create an instance and
-configure it to handle a URL like `'hello/world'` using code like this:
+configure it to handle a path like `'hello/world'` using code like this:
 
     $module = new Module;
     
@@ -118,6 +120,9 @@ own symbols to your Module and reuse them throughout your Module's patterns,
 or you could start with a Module base-class for all your Modules, enabling you
 to share any custom symbols and pre-processing functions across Modules.
 
+Since version 1.0.0, it's possible to match multi-part paths, e.g. patterns
+that have a "/" in them.
+
 
 Modules
 =======
@@ -150,8 +155,6 @@ Encapsulating routes in a Module also has the advantage of being able to
 route from one Module to another - see the "test.php" script for an example
 of creating and routing to a nested Module.
 
-(TODO: explain this in more detail.)
-
 Note that there's a good reason why URL-creation is not part of this library -
 this is explained at the end of this document.
 
@@ -161,7 +164,7 @@ Evaluating Routes
 
 A Module is the root of a set of Routes.
 
-To resolve a URL and find the Route defined by your Module, do this:
+To resolve a path and find the Route defined by your Module, do this:
 
     $route = $module->resolve('archive/2012-08');
 
@@ -188,13 +191,13 @@ simple MVC-style controller/action-abstraction without using a framework:
     $module['posts'] = function ($route) {
         $controller = new PostsController();
           
-        $route['<post_id:int>'] = function ($route) use ($controller) {
+        $route['<post_id:int>'] = function (Route $route) use ($controller) {
             
             $route->get = function ($post_id) use ($controller) {
                 return $controller->showPost($post_id);
             };
             
-            $route['edit'] = function ($route) use ($controller) {
+            $route['edit'] = function (Route $route) use ($controller) {
                 $route->get = function ($post_id) use ($controller) {
                     return $controller->editPost($post_id);
                 };
@@ -215,7 +218,7 @@ If you have a service-container or some other framework/application component
 that needs to be easily accessible from within your routes, while avoiding the
 need for `use()` clauses down through the hierarchy of functions, you can insert
 values into `Route::$vars` during `init()` (or at any point) - this collection
-stores values captured while resolving a route, and these are the values used
+stores values captured while resolving a route, and these values are used
 to fill function-arguments for both route-definitions and action-methods.
 
 
@@ -244,10 +247,12 @@ you to load and define all your routes in advance, which can be inefficient.
 
 But most importantly, it has no real value - because the tasks of creating URLs
 and resolving URLs only really have one thing in common: the name of the route.
+Since you're never going to refer to the route itself by name, for any other
+purpose besides generating a URL, having to refer to it by name isn't meaningful.
 Typically, everything else about a URL is variable, and you end up having to
 repeat parameter-names in a way that cannot be verified.
 
-Contrast the following fictive nonsense:
+Contrast the following fictive syntax:
 
     $url = $module->create('show_archive', array('year' => '2013', 'month' => '04));
 
@@ -269,10 +274,52 @@ view URL creation for what it really is: a string template. You're creating a *s
 Do you really need a framework for that? Simple solutions for simple problems, please!
 
 
+Creating a simple Front Controller
+==================================
+
+To use Walkway as a front-controller, create an "index.php" file along the lines of:
+
+    // get the path and HTTP request method:
+
+    $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+    $method = $_SERVER['REQUEST_METHOD'];
+
+    // create your module and resolve the path:
+
+    $router = new YourAwesomeModule();
+
+    $route = $router->resolve($path);
+
+    // generate a 404 if the path did not resolve:
+
+    if ($route->$method === null) {
+        header("HTTP/1.0 404 No Route");
+    }
+
+    // dispatch the get/head/post/put/delete function:
+
+    $result = $route->execute($method);
+
+    // optionally do something clever with $result here...
+
+Then create an ".htaccess" file to route incoming requests to your "index.php":
+
+    RewriteEngine on
+
+    # if a directory or a file exists, use it directly
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+
+    # otherwise forward it to index.php
+    RewriteRule . index.php
+
+And you're set!
+
+
 Enjoy!
 ======
 
-(TODO: add a front-controller example.)
+Feedback and pull requests welcome :-)
 
 
 [1]: https://github.com/vlucas
