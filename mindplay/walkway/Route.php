@@ -355,7 +355,6 @@ class Route implements ArrayAccess
                 // fill parameter using nameless value:
                 $value_index++;
                 if ($value_index > $last_index) {
-                    var_dump(array_keys($this->vars), $param->name);
                     throw new InvocationException('insufficient nameless values to fill the parameter-list', $func);
                 }
                 $params[] = $values[$value_index];
