@@ -10,7 +10,7 @@ exclusively deals with routing, and deliberately does not provide any kind
 of front-controller, request/response or controller/action abstraction,
 error-handling, or any other framework-like feature.
 
-This makes the library very open-ended - you can using the routing facility
+This makes the library very open-ended - you can use the routing facility
 to route whatever you want (anything that resembles a path) to whatever you
 want. (e.g. controllers, other scripts, another framework or CMS, anything.)
 
@@ -20,8 +20,8 @@ them, one level at a time, which is practically inifinitely scalable.
 
 This router is also modular - which means that a set of routes can be
 self-contained, and can be reused, which further helps with scalability
-in applications with a large number of routes, as modules that aren't
-visited while resolving a route, don't need to be loaded at all.
+in applications with a large number of routes, since modules that aren't
+visited while resolving a route, won't be loaded or initialized at all.
 
 The codebase is very small, very simple, and very open-ended - you can do
 both good and evil with this library.
@@ -42,8 +42,8 @@ configure it to handle a path like `'hello/world'` using code like this:
 
     $module = new Module;
     
-    $module['hello'] = function ($route) {
-        $route['world'] = function ($route) {
+    $module['hello'] = function (Route $route) {
+        $route['world'] = function (Route $route) {
             $route->get = function() {
                 echo '<h1>Hello, World!</h1>';
             };
@@ -51,86 +51,31 @@ configure it to handle a path like `'hello/world'` using code like this:
     };
 
 Route patterns are (PCRE) regular expressions - you can use substring capture,
-combined with a function, to define route parameters.
+combined with a function, to define route parameters:
 
-To help you understand how this works, I'm going to show you the simplest way
-to do this first:
-
-    $module['archive'] = function($route) {
-        $route['<year:int>-<month:int>'] = function ($route) {
+    $module['archive'] = function(Route $route) {
+        $route['<year:int>-<month:int>'] = function (Route $route) {
             $route->get = function ($year, $month) {
                 echo "<h1>Archive for $month / $year</h1>";
             };
         };
     };
 
-I told you Route patterns are regular expression, but `<year:int>-<month:int>`
-doesn't look like a regular expression. Work backwards with me to understand
-how or why this works, starting with a much less elegant version of the above:
+Note that the expression `<year:int>-<month:int>` is pre-processed, and internally
+is transformed into the PCRE regular expression `(?<year>\d+)-(?<month>\d+)`, which
+isn't quite as legible.
 
-    $module['archive'] = function ($route) {
-        $route['(\d+)-(\d+)'] = function ($route, $year, $month) {
-            $route->get = function ($year, $month) {
-                echo "<h1>Archive for Year $year month $month</h1>";
-            };
-        };
-    };
-
-This is the most basic way to capture and name a parameter, though probably
-not the most obvious. The resolver is pretty lax, and it will guess that
-the two numerical substrings you captured must be intended for use with the
-`$year` and `$month` variables, so it captures those and hangs on to them,
-which means they are now available as arguments to any functions being
-invoked below that route - in the `$route->get` function, the `$year` and
-`$month` arguments will be filled with the captured values.
-
-We didn't really need the `$year` and `$month` variables inside the first
-`$route['(\d+)-(\d+)']` function - however, we had to give names to the
-nameless substrings captured by the pattern.
-
-We don't have to though - PCRE expressions can define named subpatterns:
-
-    $module['archive'] = function ($route) {
-        $route['(?<year>\d+)-(?<month>\d+)'] = function ($route) {
-            $route->get = function ($year, $month) {
-                echo "<h1>Archive for Year $year month $month</h1>";
-            };
-        };
-    };
-
-Notice how we got rid of the extra `$year` and `$month` arguments - the
-names are now defined by the regular expression, instead of by the closure.
-
-That's not very easy on the eyes though - but Modules can also (optionally)
-pre-process the patterns, and the built-in pre-processor lets you use the
-following simplified pattern syntax:
-
-    $route['<year:\d+>-<month:\d+>'] = function ($route) {
-        ...
-    };
-
-The built-in pre-processor also recognizes a few symbols like `int` and `slug`,
-which you can use to abbreviate patterns commonly used in your routes - this
-lets us rewrite the above as follows:
-
-    $route['<year:int>-<month:int>'] = function ($route) {
-        ...
-    };
-
-The `int` symbol is substituted for the `\d+` expression - you can add your
-own symbols to your Module and reuse them throughout your Module's patterns,
-or you could start with a Module base-class for all your Modules, enabling you
-to share any custom symbols and pre-processing functions across Modules.
-
-Since version 1.0.0, it's possible to match multi-part paths, e.g. patterns
-that have a "/" in them.
+Modules can (optionally) pre-process the patterns - the default patterns allow you to
+use the simplified pattern syntax shown above, and recognizes a few symbols like `int`
+and `slug`, which are just named abbreviations for regular expression patterns. You
+can add or remove pre-processing functions, as needed.
 
 
 Modules
 =======
 
-To make a reusable Module, you can choose to extend Module instead - which
-also gives you a natural place for URL creation-functions:
+To make a reusable Module, you can derive your own specialized class from Module - which
+also gives you a natural location for URL creation-functions:
 
     class HelloWorldModule extends Module
     {
@@ -138,8 +83,8 @@ also gives you a natural place for URL creation-functions:
         {
             parent::init();
             
-            $this['hello'] = function ($route) {
-                $route['world'] = function ($route) {
+            $this['hello'] = function (Route $route) {
+                $route['world'] = function (Route $route) {
                     $route->get = function() {
                         echo '<h1>Hello, World!</h1>';
                     };
