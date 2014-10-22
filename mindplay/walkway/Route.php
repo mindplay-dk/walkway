@@ -169,22 +169,13 @@ class Route implements ArrayAccess
      */
     public function resolve($path)
     {
-        /**
-         * @var bool                $matched    indicates whether the last partial path matched a pattern
-         * @var Route               $route      the current route (switches as we walk through each token in the path)
-         * @var int|bool            $match      result of preg_match() against a defined pattern
-         * @var ReflectionFunction  $ref        reflection of the Route initialization-function
-         * @var ReflectionParameter $mod_param  reflection of Module-type to be injected
-         * @var string              $class      intermediary variable holding the class-name of a Module-type to be injected
-         * @var int                 $named_vars number of named substrings captured in regular expression
-         * @var string[]            $values     list of nameless substrings captured in regular expression
-         * @var string              $part       partial path being resolved in the current iteration
-         */
-
+        /** @var string $part partial path being resolved in the current iteration */
         $part = trim($path, '/'); // trim leading/trailing slashes
 
+        /** @var bool $matched indicates whether the last partial path matched a pattern */
         $matched = true; // assume success (empty path will successfully resolve as root)
 
+        /** @var Route $route the current route (switches as we walk through each token in the path) */
         $route = $this; // track the current Route, starting from $this
 
         $iteration = 0;
@@ -202,6 +193,11 @@ class Route implements ArrayAccess
             $matched = false; // assume failure
 
             foreach ($route->patterns as $pattern => $init) {
+                /**
+                 * @var string $pattern the pattern, with substitutions applied
+                 * @var Closure $init route initialization function
+                 */
+
                 // apply pattern-substitutions:
                 
                 foreach ($this->module->substitutions as $subpattern => $sub) {
@@ -213,7 +209,8 @@ class Route implements ArrayAccess
                 }
                 
                 $this->log("testing pattern '{$pattern}'");
-                
+
+                /** @var int|bool $match result of preg_match() against $pattern */
                 $match = @preg_match('#^' . $pattern . '(?=$|/)#i', $part, $matches);
 
                 if ($match === false) {
@@ -226,14 +223,17 @@ class Route implements ArrayAccess
 
                 $matched = true;
 
+                /** @var string $token the matched token */
                 $token = array_shift($matches);
 
                 $this->log("token '{$token}' matched by pattern '{$pattern}'");
 
                 // look for a Module type-hint in the arguments:
 
+                /** @var ReflectionFunction $ref reflection of the Route initialization-function */
                 $ref = new ReflectionFunction($init);
 
+                /** @var ReflectionParameter $mod_param reflection of Module-type to be injected */
                 $mod_param = null;
 
                 foreach ($ref->getParameters() as $param) {
@@ -245,19 +245,27 @@ class Route implements ArrayAccess
 
                 if ($mod_param) {
                     // switch to the Module found in the arguments:
+
+                    /* @var string $class intermediary variable holding the class-name of a Module-type to be injected */
                     $class = $mod_param->getClass()->name;
+
                     $this->log("switching to Module: {$class}");
+
                     $route = new $class($route, $token);
+
                     $route->vars[$mod_param->name] = $route;
                 } else {
                     // switch to a nested Route:
+
                     $route = new Route($route->module, $route, $token, $route->vars);
                 }
 
+                /** @var string[] $values list of nameless substrings captured in regular expression */
                 $values = array();
 
                 // identify named variables or nameless values:
 
+                /** @var int $named_vars number of named substrings captured in regular expression */
                 $named_vars = 0;
 
                 foreach ($matches as $key => $value) {
@@ -290,7 +298,7 @@ class Route implements ArrayAccess
             }
 
             if (isset($token)) {
-                // removed previous token from remaining part of path:
+                // remove previous token from remaining part of path:
                 $part = substr($part, strlen($token) + 1);
             } else {
                 break;
