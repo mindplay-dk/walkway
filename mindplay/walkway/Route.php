@@ -263,7 +263,7 @@ class Route implements ArrayAccess
                 // identify named variables:
 
                 if (count($matches)) {
-                    $matched = 0;
+                    $total = 0;
                     $last = 0;
 
                     foreach ($matches as $key => $value) {
@@ -276,10 +276,10 @@ class Route implements ArrayAccess
 
                         $route->vars[$key] = $value;
 
-                        $matched += 1;
+                        $total += 1;
                     }
 
-                    if ($matched - 1 !== $last) {
+                    if ($total - 1 !== $last) {
                         throw new RoutingException('pattern defines an unnamed substring capture: ' . $pattern);
                     }
                 }
