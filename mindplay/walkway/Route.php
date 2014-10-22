@@ -322,9 +322,7 @@ class Route implements ArrayAccess
     }
 
     /**
-     * Invoke a function using variables collected during traversal, while filling
-     * any missing parameters with values from a given set of nameless parameters -
-     * as parameters are identified, they are added to the list of named variables.
+     * Invoke a function using variables collected during traversal.
      *
      * @param Closure $func the function to be invoked.
      *
