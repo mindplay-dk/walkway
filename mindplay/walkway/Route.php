@@ -199,15 +199,9 @@ class Route implements ArrayAccess
                  */
 
                 // apply pattern-substitutions:
-                
-                foreach ($this->module->substitutions as $subpattern => $sub) {
-                    $pattern = preg_replace_callback($subpattern, $sub, $pattern);
-                    
-                    if ($pattern === null) {
-                        throw new RoutingException("invalid substitution pattern: '{$subpattern}' (preg_replace_callback returned null)", $init);
-                    }
-                }
-                
+
+                $pattern = $this->module->preparePattern($pattern);
+
                 $this->log("testing pattern '{$pattern}'");
 
                 /** @var int|bool $match result of preg_match() against $pattern */

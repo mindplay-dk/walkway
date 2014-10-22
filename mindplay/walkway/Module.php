@@ -22,14 +22,14 @@ use Closure;
 class Module extends Route
 {
     /**
-     * @var Closure[] hash where full regular expression => substitution closure
+     * @var Closure[] map where full regular expression => substitution closure
+     * @see preparePattern()
      * @see init()
-     * @see preg_replace_callback()
      */
     public $substitutions = array();
 
     /**
-     * @var string[] hash where symbol name => partial regular expression
+     * @var string[] map where symbol name => partial regular expression
      * @see init()
      */
     public $symbols = array();
@@ -48,6 +48,26 @@ class Module extends Route
         parent::__construct($this, $parent, $token);
 
         $this->init();
+    }
+
+    /**
+     * @param string $pattern unprocessed pattern
+     *
+     * @return string pre-processed pattern
+     *
+     * @throws RoutingException
+     */
+    public function preparePattern($pattern)
+    {
+        foreach ($this->substitutions as $subpattern => $fn) {
+            $pattern = @preg_replace_callback($subpattern, $fn, $pattern);
+
+            if ($pattern === null) {
+                throw new RoutingException("invalid substitution pattern: {$subpattern}");
+            }
+        }
+
+        return $pattern;
     }
 
     /**
