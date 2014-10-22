@@ -37,7 +37,7 @@ class Route implements ArrayAccess
     /**
      * @var mixed[] map of parameter-names to values collected during traversal
      */
-    public $vars;
+    public $vars = array();
 
     /**
      * @var Module the Module to which this Route belongs
@@ -72,12 +72,11 @@ class Route implements ArrayAccess
     protected $methods = array();
 
     /**
-     * @param $module Module owner Module
-     * @param $parent Route|null parent Route; or null if this is a root-Route.
+     * @param $module Module parent Module
+     * @param $parent Route parent Route
      * @param $token string the token (partial path) that was matched when this Route was constructed.
-     * @param $vars mixed[] list of named values
      */
-    public function __construct(Module $module, Route $parent = null, $token = '', $vars = array())
+    protected function setParent(Module $module, Route $parent, $token)
     {
         $this->module = $module;
         $this->parent = $parent;
@@ -86,10 +85,6 @@ class Route implements ArrayAccess
         $this->path = ($parent === null || $parent->path === '')
             ? $token
             : "{$parent->path}/{$token}";
-
-        $this->vars = $vars;
-        $this->vars['route'] = $this;
-        $this->vars['module'] = $this->module;
     }
 
     /**
@@ -143,10 +138,10 @@ class Route implements ArrayAccess
     public function __get($name)
     {
         $name = strtolower($name);
-        
+
         return isset($this->methods[$name]) ? $this->methods[$name] : null;
     }
-    
+
     /**
      * @param string $name
      * @param Closure $value
@@ -222,37 +217,7 @@ class Route implements ArrayAccess
 
                 $this->log("token '{$token}' matched by pattern '{$pattern}'");
 
-                // look for a Module type-hint in the arguments:
-
-                /** @var ReflectionFunction $ref reflection of the Route initialization-function */
-                $ref = new ReflectionFunction($init);
-
-                /** @var ReflectionParameter $mod_param reflection of Module-type to be injected */
-                $mod_param = null;
-
-                foreach ($ref->getParameters() as $param) {
-                    if ($param->getClass() && $param->getClass()->isSubClassOf(__NAMESPACE__ . '\\Module')) {
-                        $mod_param = $param;
-                        break;
-                    }
-                }
-
-                if ($mod_param) {
-                    // switch to the Module found in the arguments:
-
-                    /* @var string $class intermediary variable holding the class-name of a Module-type to be injected */
-                    $class = $mod_param->getClass()->name;
-
-                    $this->log("switching to Module: {$class}");
-
-                    $route = new $class($route, $token);
-
-                    $route->vars[$mod_param->name] = $route;
-                } else {
-                    // switch to a nested Route:
-
-                    $route = new Route($route->module, $route, $token, $route->vars);
-                }
+                $route = $this->createRoute($route, $token, $init);
 
                 // identify named variables:
 
@@ -322,6 +287,57 @@ class Route implements ArrayAccess
     }
 
     /**
+     * @param Route   $parent
+     * @param string  $token
+     * @param Closure $init initialization function
+     *
+     * @return Route
+     */
+    protected function createRoute(Route $parent, $token, Closure $init)
+    {
+        /** @var ReflectionFunction $ref reflection of the Route initialization-function */
+        $ref = new ReflectionFunction($init);
+
+        /** @var ReflectionParameter $mod_param reflection of Module-type to be injected */
+        $mod_param = null;
+
+        foreach ($ref->getParameters() as $param) {
+            if ($param->getClass() && $param->getClass()->isSubClassOf(__NAMESPACE__ . '\\Module')) {
+                $mod_param = $param;
+                break;
+            }
+        }
+
+        if ($mod_param) {
+            // switch to the Module found in the arguments:
+
+            /* @var string $class intermediary variable holding the class-name of a Module-type to be injected */
+            $class = $mod_param->getClass()->name;
+
+            $this->log("switching to Module: {$class}");
+
+            /** @var Module $module */
+            $module = new $class();
+
+            $module->vars[$mod_param->name] = $module;
+
+            $module->setParent($module, $parent, $token);
+
+            return $module;
+        } else {
+            // switch to a nested Route:
+
+            $route = new Route();
+
+            $route->vars = $parent->vars;
+
+            $route->setParent($parent->module, $parent, $token);
+
+            return $route;
+        }
+    }
+
+    /**
      * Invoke a function using variables collected during traversal.
      *
      * @param Closure $func the function to be invoked.
@@ -343,40 +359,51 @@ class Route implements ArrayAccess
         $params = array();
 
         foreach ($fn->getParameters() as $param) {
-            if (! array_key_exists($param->name, $this->vars)) {
-                throw new InvocationException("missing parameter: \${$param->name}");
-            }
+            switch ($param->name) {
+                case 'route':
+                    $params[] = $this;
+                    continue;
 
-            $params[] = $this->vars[$param->name];
+                case 'module':
+                    $params[] = $this->module;
+                    continue;
+
+                default:
+                    if (! array_key_exists($param->name, $this->vars)) {
+                        throw new InvocationException("missing parameter: \${$param->name}");
+                    }
+
+                    $params[] = $this->vars[$param->name];
+            }
         }
 
         return call_user_func_array($func, $params);
     }
-    
+
     /*
     public function __destruct()
     {
         unset($this->module);
         unset($this->parent);
-        
+
         foreach ($this->vars as $key => $value) {
             unset($this->vars[$key]);
         }
-        
+
         unset($this->vars);
-        
+
         foreach ($this->patterns as $key => $value) {
             unset($this->patterns[$key]);
         }
-        
+
         unset($this->patterns);
-        
+
         foreach ($this->methods as $key => $value) {
             unset($this->methods[$key]);
         }
-        
+
         unset($this->methods);
-        
+
         echo "- OUT OF SCOPE -\n";
     }
     */

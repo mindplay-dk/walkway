@@ -39,13 +39,9 @@ class Module extends Route
      */
     public $onLog;
 
-    /**
-     * @param Route  $parent
-     * @param string $token
-     */
-    public function __construct(Route $parent = null, $token = '')
+    public function __construct()
     {
-        parent::__construct($this, $parent, $token);
+        $this->module = $this;
 
         $this->init();
     }
@@ -73,7 +69,7 @@ class Module extends Route
     /**
      * Initialize Routes after construction - override as needed.
      */
-    public function init()
+    protected function init()
     {
         $module = $this;
 
