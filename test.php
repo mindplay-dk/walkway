@@ -18,6 +18,7 @@ set_error_handler("exception_error_handler");
 
 use mindplay\walkway\Route;
 use mindplay\walkway\Module;
+use mindplay\walkway\RoutingException;
 
 // Define a reusable Module:
 
@@ -198,6 +199,38 @@ $tests = array(
 
         return $result === 'foo-bar';
     },
+
+    'Throws on attempted nameless substring capture' => function () {
+        $route = new Module();
+
+        $route['foo/(\w+)'] = function (Route $route, $bar) {
+            return $bar;
+        };
+
+        try {
+            $route->resolve('foo/bar');
+        } catch (RoutingException $e) {
+            return true;
+        }
+
+        return false;
+    },
+
+    'Throws on mixed named and nameless substring capture' => function () {
+        $route = new Module();
+
+        $route['foo/<bar:slug>/(\w+)'] = function (Route $route, $foo, $bar) {
+            return $bar;
+        };
+
+        try {
+            $route->resolve('foo/bar/baz');
+        } catch (RoutingException $e) {
+            return true;
+        }
+
+        return false;
+    }
 
 );
 

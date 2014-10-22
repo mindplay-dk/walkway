@@ -260,35 +260,33 @@ class Route implements ArrayAccess
                     $route = new Route($route->module, $route, $token, $route->vars);
                 }
 
-                /** @var string[] $values list of nameless substrings captured in regular expression */
-                $values = array();
+                // identify named variables:
 
-                // identify named variables or nameless values:
+                if (count($matches)) {
+                    $matched = 0;
+                    $last = 0;
 
-                /** @var int $named_vars number of named substrings captured in regular expression */
-                $named_vars = 0;
+                    foreach ($matches as $key => $value) {
+                        if (is_int($key)) {
+                            $last = $key;
+                            continue;
+                        }
 
-                foreach ($matches as $key => $value) {
-                    if (is_int($key)) {
-                        $values[] = $value;
-                    } else {
                         $this->log("captured named variable '{$key}' as '{$value}'");
+
                         $route->vars[$key] = $value;
-                        $named_vars += 1;
-                    }
-                }
 
-                if ($named_vars > 0) {
-                    if ($named_vars !== count($values)) {
-                        throw new RoutingException("invalid pattern '{$pattern}' (mix of nameless and named substring captures)", $init);
+                        $matched += 1;
                     }
 
-                    $values = array();
+                    if ($matched - 1 !== $last) {
+                        throw new RoutingException('pattern defines an unnamed substring capture: ' . $pattern);
+                    }
                 }
 
                 // initialize the nested Route:
 
-                if ($route->invoke($init, $values) === false) {
+                if ($route->invoke($init) === false) {
                     // the function explicitly aborted the route
                     $this->log("aborted");
                     return null;
@@ -310,6 +308,7 @@ class Route implements ArrayAccess
 
     /**
      * @param $method string name of HTTP method-handler to execute (e.g. 'get', 'put', 'post', 'delete', etc.)
+     *
      * @return mixed|bool the value returned by the HTTP method-handler; true if the method-handler returned
      *                    no value - or false if the method-handler was not found (or returned false)
      */
@@ -334,47 +333,29 @@ class Route implements ArrayAccess
      * as parameters are identified, they are added to the list of named variables.
      *
      * @param Closure $func the function to be invoked.
-     * @param mixed[] $values additional nameless values to be identified
+     *
      * @return mixed the value returned by the invoked function
+     *
      * @throws InvocationException
+     *
      * @see $vars
      */
-    protected function invoke($func, $values = array())
+    protected function invoke($func)
     {
         /**
-         * @var $value_index int the index of the next nameless value to use from $values
          * @var $params mixed[] the list of parameters to be applied to $func
-         * @var $last_index int the index of the last nameless value
          */
 
         $fn = new ReflectionFunction($func);
 
-        $value_index = -1;
-
         $params = array();
 
-        $last_index = count($values) - 1;
-
         foreach ($fn->getParameters() as $param) {
-            if (array_key_exists($param->name, $this->vars)) {
-                // fill parameter using named value:
-                $params[] = $this->vars[$param->name];
-            } else {
-                // fill parameter using nameless value:
-                $value_index++;
-                if ($value_index > $last_index) {
-                    throw new InvocationException('insufficient nameless values to fill the parameter-list', $func);
-                }
-                $params[] = $values[$value_index];
-                // add to list of named values:
-                $this->vars[$param->name] = $values[$value_index];
+            if (! array_key_exists($param->name, $this->vars)) {
+                throw new InvocationException("missing parameter: \${$param->name}");
             }
-        }
 
-        if ($value_index !== $last_index) {
-            $error = $value_index - $last_index;
-            
-            throw new InvocationException('wrong parameter-count: ' . abs($error) . ' too ' . ($error>0 ? 'many' : 'few'), $func);
+            $params[] = $this->vars[$param->name];
         }
 
         return call_user_func_array($func, $params);
