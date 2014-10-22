@@ -379,32 +379,4 @@ class Route implements ArrayAccess
 
         return call_user_func_array($func, $params);
     }
-
-    /*
-    public function __destruct()
-    {
-        unset($this->module);
-        unset($this->parent);
-
-        foreach ($this->vars as $key => $value) {
-            unset($this->vars[$key]);
-        }
-
-        unset($this->vars);
-
-        foreach ($this->patterns as $key => $value) {
-            unset($this->patterns[$key]);
-        }
-
-        unset($this->patterns);
-
-        foreach ($this->methods as $key => $value) {
-            unset($this->methods[$key]);
-        }
-
-        unset($this->methods);
-
-        echo "- OUT OF SCOPE -\n";
-    }
-    */
 }
