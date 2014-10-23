@@ -4,11 +4,9 @@ header('Content-type: text/plain');
 
 #define('NOISY', true); // uncomment to enable diagnostic messages
 
-spl_autoload_register(
-    function ($class) {
-        include __DIR__ . '/' . strtr($class, '\\', DIRECTORY_SEPARATOR) . '.php';
-    }
-);
+/** @var \Composer\Autoload\ClassLoader $autoloader */
+$autoloader = require __DIR__ . '/vendor/autoload.php';
+$autoloader->addPsr4('mindplay\walkway\\', __DIR__ . '/mindplay/walkway');
 
 function exception_error_handler($errno, $errstr, $errfile, $errline ) {
     throw new ErrorException($errstr, 0, $errno, $errfile, $errline);
@@ -117,6 +115,16 @@ $module['blog'] = function ($route) {
 $module->get = function () {
     return 'hello';
 };
+
+// Configure code coverage:
+
+if (coverage()) {
+    $filter = coverage()->filter();
+
+    $filter->addDirectoryToWhitelist(__DIR__.'/mindplay/walkway');
+
+    coverage()->start('test');
+}
 
 // Run tests:
 
@@ -234,6 +242,22 @@ test(
     }
 );
 
+if (coverage()) {
+    coverage()->stop();
+
+    // output code coverage report to console:
+
+    $report = new PHP_CodeCoverage_Report_Text(10, 90, false, false);
+
+    echo $report->process(coverage(), false);
+
+    // output code coverage report for integration with CI tools:
+
+    $report = new PHP_CodeCoverage_Report_Clover();
+
+    $report->process(coverage(), 'build/logs/clover.xml');
+}
+
 exit(status());
 
 // https://gist.github.com/mindplay-dk/4260582
@@ -349,4 +373,28 @@ function status($status = null)
     }
 
     return $failures;
+}
+
+/**
+ * @return PHP_CodeCoverage|null
+ */
+function coverage()
+{
+    static $coverage = null;
+
+    if ($coverage === false) {
+        return null; // code coverage unavailable
+    }
+
+    if ($coverage === null) {
+        try {
+            $coverage = new PHP_CodeCoverage;
+        } catch (PHP_CodeCoverage_Exception $e) {
+            echo "# Notice: no code coverage run-time available\n";
+            $coverage = false;
+            return null;
+        }
+    }
+
+    return $coverage;
 }
