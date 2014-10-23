@@ -120,146 +120,233 @@ $module->get = function () {
 
 // Run tests:
 
-$tests = array(
-    'Resolves root path' => function() use ($module) {
-        if ($route = $module->resolve('/')) {
-            if ($route === $module) {
-                if ($route->execute('get') === 'hello') {
-                    return true;
-                }
-            }
-        }
-    },
+test(
+    'Can resolve routes',
+    function () use ($module) {
+        $route = $module->resolve('/');
 
-    'Does not resolve invalid root path' => function () use ($module) {
-        return $module->resolve('foo') === null;
-    },
+        ok($route instanceof Route, 'should resolve to a Route instance');
 
-    'Does not resolve invalid nested path' => function () use ($module) {
-        return $module->resolve('blog/foo') === null;
-    },
+        eq($route, $module, 'resolves the root as the module itself');
 
-    'Resolves a basic path' => function() use ($module) {
-        if ($route = $module->resolve('blog/posts/42/edit')) {
-            if ($route instanceof Route) {
-                if ($route->execute('get') === array('post_id' => '42')) {
-                    return true;
-                }
-            }
-        }
-    },
+        eq($route->execute('get'), 'hello', 'returns expected result');
 
-    'Captures multiple named substrings' => function() use ($module) {
-        if ($route = $module->resolve('blog/posts/2012-07')) {
-            return $route->execute('get') === array('year'=>'2012', 'month'=>'07');
-        }
-    },
+        eq($module->resolve('foo'), null, 'returns null for undefined path');
 
-    'Inherits captured substrings from parent routes' => function() use ($module) {
-        if ($route = $module->resolve('blog/posts/2012-07/page2')) {
-            return $route->execute('get') === array('year'=>'2012', 'month'=>'07', 'page'=>'2');
-        }
-    },
+        eq($module->resolve('foo/bar'), null, 'returns null for undefined nested path');
 
-    'Correctly resolves a sub-module' => function() use ($module) {
-        if ($route = $module->resolve('blog/posts/88/comments')) {
-            if ($route instanceof CommentModule) {
-                if ($route->execute('get') === 'comments') {
-                    return true;
-                }
-            }
-        }
-    },
+        $route = $module->resolve('blog/posts/42/edit');
 
-    'Correctly resolves a route inside a sub-module' => function() use ($module) {
-        if ($route = $module->resolve('blog/posts/66/comments/submit')) {
-            if ($route->module instanceof CommentModule) {
-                if ($route->execute('get') === 'comment form') {
-                    return true;
-                }
-            }
-        }
-    },
+        ok($route instanceof Route, 'resolves a valid multi-level path');
 
-    'Does not resolve when the route actively blocks the request (by returning false)' => function() use ($module) {
-        return ($module->resolve('blog/posts/99') === null)
-            && ($module->resolve('blog/posts/88') instanceof Route);
-    },
+        eq($route->execute('get'), array('post_id' => '42'), 'returns expected result');
 
-    'Routes, but does not execute when there is no action-method' => function() use ($module) {
-        if ($route = $module->resolve('blog')) {
-            return $route->execute('get') === false;
-        }
-    },
-
-    'Resolves path with more than one part' => function () use ($module) {
         $route = $module->resolve('blog/tags/foo-bar');
 
-        $result = $route->execute('get');
+        ok($route instanceof Route, 'resolves a two-part path containing a slash');
 
-        return $result === 'foo-bar';
-    },
+        eq($route->execute('get'), 'foo-bar', 'returns the expected result');
 
-    'Throws on attempted nameless substring capture' => function () {
+    }
+);
+
+test(
+    'Can capture substrings',
+    function () use ($module) {
+        $route = $module->resolve('blog/posts/2012-07');
+
+        eq($route->execute('get'), array('year'=>'2012', 'month'=>'07'), 'returns multiple captured substrings');
+
+        $route = $module->resolve('blog/posts/2012-07/page2');
+
+        eq($route->execute('get'), array('year'=>'2012', 'month'=>'07', 'page'=>'2'), 'inherits captured substrings from parent routes');
+    }
+);
+
+test(
+    'Can handle Modules',
+    function () use ($module) {
+        $route = $module->resolve('blog/posts/88/comments');
+
+        ok($route instanceof CommentModule, 'returns the expected module type');
+
+        eq($route->execute('get'), 'comments', 'returns the expected result');
+
+        $route = $module->resolve('blog/posts/66/comments/submit');
+
+        ok($route->module instanceof CommentModule, 'returns the expected module type');
+
+        eq($route->execute('get'), 'comment form', 'returns the expected result');
+    }
+);
+
+test(
+    'Can control routing behavior',
+    function () use ($module) {
+        ok($module->resolve('blog/posts/99') === null, 'can abort routing by returning false');
+
+        ok($module->resolve('blog/posts/88') instanceof Route, 'correctly routes in other cases');
+    }
+);
+
+test(
+    'Can dispatch (http) methods',
+    function () use ($module) {
+        $route = $module->resolve('blog');
+
+        ok($route instanceof Route, 'resolves the route');
+
+        ok($route->execute('get') === false, 'but returns FALSE when no action is defined');
+    }
+);
+
+test(
+    'Throws exceptions',
+    function () use ($module) {
         $route = new Module();
 
         $route['foo/(\w+)'] = function (Route $route, $bar) {
             return $bar;
         };
 
-        try {
-            $route->resolve('foo/bar');
-        } catch (RoutingException $e) {
-            return true;
-        }
+        expect(
+            'mindplay\walkway\RoutingException',
+            'on attempted nameless substring capture',
+            function () use ($route) {
+                $result = $route->resolve('foo/bar');
+            }
+        );
 
-        return false;
-    },
-
-    'Throws on mixed named and nameless substring capture' => function () {
         $route = new Module();
 
         $route['foo/<bar:slug>/(\w+)'] = function (Route $route, $foo, $bar) {
             return $bar;
         };
 
-        try {
-            $route->resolve('foo/bar/baz');
-        } catch (RoutingException $e) {
-            return true;
-        }
+        expect(
+            'mindplay\walkway\RoutingException',
+            'on mixed named and nameless substring capture',
+            function () use ($route) {
+                $result = $route->resolve('foo/bar/baz');
+            }
+        );
 
-        return false;
     }
-
 );
 
-// Display test results:
+exit(status());
 
-$passed = 0;
-$failed = 0;
-$number = 0;
+// https://gist.github.com/mindplay-dk/4260582
 
-foreach ($tests as $name => $test) {
-    $pass = $test() === true;
+/**
+ * @param string   $name     test description
+ * @param callable $function test implementation
+ */
+function test($name, $function)
+{
+    echo "\n=== $name ===\n\n";
 
-    echo "  " . ($pass ? 'PASS: ' : 'FAIL: ') . $name . "\n";
-
-    if ($pass) {
-        $passed += 1;
-    } else {
-        $failed += 1;
+    try {
+        call_user_func($function);
+    } catch (Exception $e) {
+        ok(false, "UNEXPECTED EXCEPTION", $e);
     }
 }
 
-$total = $passed + $failed;
+/**
+ * @param bool   $result result of assertion
+ * @param string $why    description of assertion
+ * @param mixed  $value  optional value (displays on failure)
+ */
+function ok($result, $why = null, $value = null)
+{
+    if ($result === true) {
+        echo "- PASS: " . ($why === null ? 'OK' : $why) . ($value === null ? '' : ' (' . format($value) . ')') . "\n";
+    } else {
+        echo "# FAIL: " . ($why === null ? 'ERROR' : $why) . ($value === null ? '' : ' - ' . format($value, true)) . "\n";
+        status(false);
+    }
+}
 
-echo "\n";
+/**
+ * @param mixed  $value    value
+ * @param mixed  $expected expected value
+ * @param string $why      description of assertion
+ */
+function eq($value, $expected, $why = null)
+{
+    $result = $value === $expected;
 
-if ($failed > 0) {
-    echo "*** $passed of $total tests passed, $failed tests failed!";
-    exit(1);
-} else {
-    echo "* $passed tests passed.";
-    exit(0);
+    $info = $result
+        ? format($value)
+        : "expected: " . format($expected, true) . ", got: " . format($value, true);
+
+    ok($result, ($why === null ? $info : "$why ($info)"));
+}
+
+/**
+ * @param string   $exception_type Exception type name
+ * @param string   $why            description of assertion
+ * @param callable $function       function expected to throw
+ */
+function expect($exception_type, $why, $function)
+{
+    try {
+        call_user_func($function);
+    } catch (Exception $e) {
+        if ($e instanceof $exception_type) {
+            ok(true, $why, $e);
+            return;
+        } else {
+            $actual_type = get_class($e);
+            ok(false, "$why (expected $exception_type but $actual_type was thrown)");
+            return;
+        }
+    }
+
+    ok(false, "$why (expected exception $exception_type was NOT thrown)");
+}
+
+/**
+ * @param mixed $value
+ * @param bool  $verbose
+ *
+ * @return string
+ */
+function format($value, $verbose = false)
+{
+    if ($value instanceof Exception) {
+        return get_class($value)
+        . ($verbose ? ": \"" . $value->getMessage() . "\"" : '');
+    }
+
+    if (! $verbose && is_array($value)) {
+        return 'array[' . count($value) . ']';
+    }
+
+    if (is_bool($value)) {
+        return $value ? 'TRUE' : 'FALSE';
+    }
+
+    if (is_object($value) && !$verbose) {
+        return get_class($value);
+    }
+
+    return print_r($value, true);
+}
+
+/**
+ * @param bool|null $status test status
+ *
+ * @return int number of failures
+ */
+function status($status = null)
+{
+    static $failures = 0;
+
+    if ($status === false) {
+        $failures += 1;
+    }
+
+    return $failures;
 }
