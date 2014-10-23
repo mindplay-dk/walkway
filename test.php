@@ -8,11 +8,15 @@ header('Content-type: text/plain');
 $autoloader = require __DIR__ . '/vendor/autoload.php';
 $autoloader->addPsr4('mindplay\walkway\\', __DIR__ . '/mindplay/walkway');
 
-function exception_error_handler($errno, $errstr, $errfile, $errline ) {
-    throw new ErrorException($errstr, 0, $errno, $errfile, $errline);
-}
+set_error_handler(
+    function($errno, $errstr, $errfile, $errline) {
+        $error = new ErrorException($errstr, 0, $errno, $errfile, $errline);
 
-set_error_handler("exception_error_handler");
+        if ($error->getSeverity() & error_reporting()) {
+            throw $error;
+        }
+    }
+);
 
 use mindplay\walkway\Route;
 use mindplay\walkway\Module;
@@ -236,6 +240,18 @@ test(
             'on mixed named and nameless substring capture',
             function () use ($route) {
                 $result = $route->resolve('foo/bar/baz');
+            }
+        );
+
+        $route = new Module();
+
+        $route['((('] = function (Route $route) {};
+
+        expect(
+            'mindplay\walkway\RoutingException',
+            'when using a malformed regular expression',
+            function () use ($route) {
+                $result = $route->resolve('foo/bar');
             }
         );
 
