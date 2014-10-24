@@ -135,6 +135,29 @@ if (coverage()) {
 // Run tests:
 
 test(
+    'Can define routing functions',
+    function () {
+        $module = new Module();
+
+        $fn = function () {};
+
+        $module['foo'] = $fn;
+
+        eq($module['foo'], $fn, 'routing function defined');
+
+        ok(isset($module['foo']), 'routing function is set');
+
+        ok(! isset($module['bar']), 'route function not set');
+
+        unset($module['foo']);
+
+        ok(! isset($module['foo']), 'routing function unset');
+
+        ok($module->resolve('foo') === null, 'no routes to resolve');
+    }
+);
+
+test(
     'Can resolve routes',
     function () use ($module) {
         $route = $module->resolve('/');
