@@ -60,6 +60,11 @@ class Route implements ArrayAccess
     public $path;
 
     /**
+     * @var bool true, if routing has been explicitly aborted
+     */
+    public $aborted;
+
+    /**
      * @var Closure[] map of patterns to Route definition-functions
      * @see resolve()
      */
@@ -75,11 +80,6 @@ class Route implements ArrayAccess
      * @var Module a Module instance being delegated to
      */
     private $_delegate;
-
-    /**
-     * @var bool true, if routing has been explicitly aborted
-     */
-    private $_aborted;
 
     /**
      * @param $parent Route parent Route
@@ -255,7 +255,7 @@ class Route implements ArrayAccess
 
                 $route->invoke($init);
 
-                if ($route->_aborted) {
+                if ($route->aborted) {
                     // the function explicitly aborted the route
                     $this->log("aborted");
                     return null;
@@ -319,7 +319,7 @@ class Route implements ArrayAccess
      */
     public function abort()
     {
-        $this->_aborted = true;
+        $this->aborted = true;
     }
 
     /**
