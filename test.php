@@ -92,9 +92,11 @@ $module['blog'] = function ($route) {
                 $route->log("displaying post number {$post_id}!");
             };
 
-            $route['comments'] = function (Route $route, CommentModule $comments) {
-                $route->log("delegating control to " . get_class($comments));
-                $route->log("available vars: " . implode(', ', array_keys($comments->vars)));
+            $route['comments'] = function (Route $route) {
+                $route->log("delegating control to CommentModule");
+                $route->log("available vars: " . implode(', ', array_keys($route->vars)));
+
+                $route->delegate(new CommentModule());
             };
         };
 
@@ -180,7 +182,7 @@ test(
     function () use ($module) {
         $route = $module->resolve('blog/posts/88/comments');
 
-        ok($route instanceof CommentModule, 'returns the expected module type');
+        ok($route instanceof CommentModule, 'returns the expected module type', get_class($route));
 
         eq($route->execute('get'), 'comments', 'returns the expected result');
 

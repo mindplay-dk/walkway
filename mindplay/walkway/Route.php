@@ -72,13 +72,16 @@ class Route implements ArrayAccess
     protected $methods = array();
 
     /**
-     * @param $module Module parent Module
+     * @var Module a Module instance being delegated to
+     */
+    private $_delegate;
+
+    /**
      * @param $parent Route parent Route
      * @param $token string the token (partial path) that was matched when this Route was constructed.
      */
-    protected function setParent(Module $module, Route $parent, $token)
+    protected function setParent(Route $parent, $token)
     {
-        $this->module = $module;
         $this->parent = $parent;
         $this->token = $token;
 
@@ -251,6 +254,16 @@ class Route implements ArrayAccess
                     return null;
                 }
 
+                if ($route->_delegate) {
+                    // delegate() was called - delegate routing to the specified module:
+
+                    $this->log("delegating routing to " . get_class($this->_delegate));
+
+                    $route->_delegate->setParent($route, $token);
+
+                    $route = $route->_delegate;
+                }
+
                 break; // skip any remaining patterns
             }
 
@@ -287,6 +300,14 @@ class Route implements ArrayAccess
     }
 
     /**
+     * @param Module $module a Module to which to delegate the routing
+     */
+    public function delegate(Module $module)
+    {
+        $this->_delegate = $module;
+    }
+
+    /**
      * @param Route   $parent
      * @param string  $token
      * @param Closure $init initialization function
@@ -295,46 +316,14 @@ class Route implements ArrayAccess
      */
     protected function createRoute(Route $parent, $token, Closure $init)
     {
-        /** @var ReflectionFunction $ref reflection of the Route initialization-function */
-        $ref = new ReflectionFunction($init);
+        $route = new Route();
 
-        /** @var ReflectionParameter $mod_param reflection of Module-type to be injected */
-        $mod_param = null;
+        $route->module = $parent->module;
+        $route->vars = $parent->vars;
 
-        foreach ($ref->getParameters() as $param) {
-            if ($param->getClass() && $param->getClass()->isSubClassOf(__NAMESPACE__ . '\\Module')) {
-                $mod_param = $param;
-                break;
-            }
-        }
+        $route->setParent($parent, $token);
 
-        if ($mod_param) {
-            // switch to the Module found in the arguments:
-
-            /* @var string $class intermediary variable holding the class-name of a Module-type to be injected */
-            $class = $mod_param->getClass()->name;
-
-            $this->log("switching to Module: {$class}");
-
-            /** @var Module $module */
-            $module = new $class();
-
-            $module->vars[$mod_param->name] = $module;
-
-            $module->setParent($module, $parent, $token);
-
-            return $module;
-        } else {
-            // switch to a nested Route:
-
-            $route = new Route();
-
-            $route->vars = $parent->vars;
-
-            $route->setParent($parent->module, $parent, $token);
-
-            return $route;
-        }
+        return $route;
     }
 
     /**

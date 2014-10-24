@@ -98,9 +98,14 @@ also gives you a natural location for URL creation-functions:
         }
     }
 
-Encapsulating routes in a Module also has the advantage of being able to
-route from one Module to another - see the "test.php" script for an example
-of creating and routing to a nested Module.
+Encapsulating routes in a Module also provides modularity - to delegate control from
+from one Module to another, call the delegate() method on the Route object:
+
+    $route['comments'] = function (Route $route) {
+        $route->delegate(new CommentModule());
+    };
+
+See the "test.php" script for an example of creating and routing to a nested Module.
 
 Note that there's a good reason why URL-creation is not part of this library -
 this is explained at the end of this document.
