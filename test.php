@@ -76,7 +76,7 @@ $module['blog'] = function ($route) {
     $route['posts'] = function ($route) {
         $route['<post_id:int>'] = function (Route $route, $post_id) {
             if ($post_id == 99) {
-                return false; // access denied!
+                $route->abort(); // access denied!
             }
 
             $route['edit'] = function (Route $route) {

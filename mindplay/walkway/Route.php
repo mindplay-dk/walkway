@@ -77,6 +77,11 @@ class Route implements ArrayAccess
     private $_delegate;
 
     /**
+     * @var bool true, if routing has been explicitly aborted
+     */
+    private $_aborted;
+
+    /**
      * @param $parent Route parent Route
      * @param $token string the token (partial path) that was matched when this Route was constructed.
      */
@@ -248,7 +253,9 @@ class Route implements ArrayAccess
 
                 // initialize the nested Route:
 
-                if ($route->invoke($init) === false) {
+                $route->invoke($init);
+
+                if ($route->_aborted) {
                     // the function explicitly aborted the route
                     $this->log("aborted");
                     return null;
@@ -300,11 +307,19 @@ class Route implements ArrayAccess
     }
 
     /**
-     * @param Module $module a Module to which to delegate the routing
+     * @param Module $module a Module to which to delegate the routing during resolve()
      */
     public function delegate(Module $module)
     {
         $this->_delegate = $module;
+    }
+
+    /**
+     * Call this method to explicitly abort the routing during resolve()
+     */
+    public function abort()
+    {
+        $this->_aborted = true;
     }
 
     /**
