@@ -374,7 +374,7 @@ class Route implements ArrayAccess
 
                 default:
                     if (! array_key_exists($param->name, $this->vars)) {
-                        throw new InvocationException("missing parameter: \${$param->name}");
+                        throw new InvocationException("missing parameter: \${$param->name}", $func);
                     }
 
                     $params[] = $this->vars[$param->name];
