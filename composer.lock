@@ -4,7 +4,7 @@
         "Read more about it at http://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "hash": "6bf999fcc35c699fdfa332f01ed9890b",
+    "hash": "e4365d4b9acf80f064e6647c48d6cbc9",
     "packages": [],
     "packages-dev": [
         {
@@ -13,12 +13,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/sebastianbergmann/php-code-coverage.git",
-                "reference": "28d21b57c189cb72829056353de603c4d4da55a0"
+                "reference": "21b9006b7ceb7e1cb0b705615af31f67c8cd1692"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/sebastianbergmann/php-code-coverage/zipball/28d21b57c189cb72829056353de603c4d4da55a0",
-                "reference": "28d21b57c189cb72829056353de603c4d4da55a0",
+                "url": "https://api.github.com/repos/sebastianbergmann/php-code-coverage/zipball/21b9006b7ceb7e1cb0b705615af31f67c8cd1692",
+                "reference": "21b9006b7ceb7e1cb0b705615af31f67c8cd1692",
                 "shasum": ""
             },
             "require": {
@@ -67,7 +67,7 @@
                 "testing",
                 "xunit"
             ],
-            "time": "2014-10-05 10:46:54"
+            "time": "2014-11-11 14:18:30"
         },
         {
             "name": "phpunit/php-file-iterator",
