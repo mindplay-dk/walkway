@@ -5,6 +5,8 @@ Elegant, modular routing for PHP - inspired by [vlucas][1]/[bulletphp][2].
 
 [![Build Status](https://travis-ci.org/mindplay-dk/walkway.png)](https://travis-ci.org/mindplay-dk/walkway)
 
+[![Code Coverage](https://scrutinizer-ci.com/g/mindplay-dk/walkway/badges/coverage.png?b=dev-2.0)](https://scrutinizer-ci.com/g/mindplay-dk/walkway/?branch=dev-2.0)
+
 Note that this is not a framework, and not a micro-framework - this library
 exclusively deals with routing, and deliberately does not provide any kind
 of front-controller, request/response or controller/action abstraction,
