@@ -35,9 +35,9 @@ class Module extends Route
     public $symbols = array();
 
     /**
-     * @var Closure event-handler for diagnostic messages
+     * @var Closure|null event-handler for diagnostic messages
      */
-    public $onLog;
+    public $onLog = null;
 
     public function __construct()
     {

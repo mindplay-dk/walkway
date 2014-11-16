@@ -127,7 +127,9 @@ $module->get = function () {
 if (coverage()) {
     $filter = coverage()->filter();
 
-    $filter->addDirectoryToWhitelist(__DIR__.'/mindplay/walkway');
+    $filter->addDirectoryToWhitelist(__DIR__ . '/mindplay/walkway');
+    $filter->removeFileFromWhitelist(__DIR__ . '/mindplay/walkway/RoutingException.php');
+    $filter->removeFileFromWhitelist(__DIR__ . '/mindplay/walkway/InvocationException.php');
 
     coverage()->start('test');
 }
@@ -238,8 +240,36 @@ test(
 );
 
 test(
+    'Log messages triggered',
+    function () {
+        $got_message = null;
+
+        $route = new Module();
+        $route->onLog = function ($message) use (&$got_message) {
+            $got_message = $message;
+        };
+
+        $route->log('test');
+
+        eq($got_message, 'test', 'log closure was triggered');
+    }
+);
+
+test(
     'Throws exceptions',
     function () use ($module) {
+        $route = new Module();
+        $route->substitutions['///'] = function() {};
+        $route['foo'] = function (Route $route) {};
+
+        expect(
+            'mindplay\walkway\RoutingException',
+            'on invalid substitution pattern',
+            function () use ($route) {
+                $route->resolve('foo');
+            }
+        );
+
         $route = new Module();
 
         $route['foo/(\w+)'] = function (Route $route, $bar) {
@@ -256,20 +286,6 @@ test(
 
         $route = new Module();
 
-        $route['foo/<bar:slug>/(\w+)'] = function (Route $route, $foo, $bar) {
-            return $bar;
-        };
-
-        expect(
-            'mindplay\walkway\RoutingException',
-            'on mixed named and nameless substring capture',
-            function () use ($route) {
-                $result = $route->resolve('foo/bar/baz');
-            }
-        );
-
-        $route = new Module();
-
         $route['((('] = function (Route $route) {};
 
         expect(
@@ -280,6 +296,17 @@ test(
             }
         );
 
+        $route = new Module();
+
+        $route['foo'] = function (Route $route, $bar) {};
+
+        expect(
+            'mindplay\walkway\InvocationException',
+            'when a parameter cannot be satisfied',
+            function () use ($route) {
+                $route->resolve('foo');
+            }
+        );
     }
 );
 
@@ -381,8 +408,7 @@ function expect($exception_type, $why, $function)
 function format($value, $verbose = false)
 {
     if ($value instanceof Exception) {
-        return get_class($value)
-        . ($verbose ? ": \"" . $value->getMessage() . "\"" : '');
+        return get_class($value) . ": \"" . $value->getMessage() . "\"";
     }
 
     if (! $verbose && is_array($value)) {
