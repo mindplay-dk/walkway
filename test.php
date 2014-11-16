@@ -6,7 +6,7 @@ header('Content-type: text/plain');
 
 /** @var \Composer\Autoload\ClassLoader $autoloader */
 $autoloader = require __DIR__ . '/vendor/autoload.php';
-$autoloader->addPsr4('mindplay\walkway\\', __DIR__ . '/mindplay/walkway');
+$autoloader->addPsr4('mindplay\walkway\\', __DIR__ . '/src');
 
 set_error_handler(
     function($errno, $errstr, $errfile, $errline) {
@@ -127,9 +127,9 @@ $module->get = function () {
 if (coverage()) {
     $filter = coverage()->filter();
 
-    $filter->addDirectoryToWhitelist(__DIR__ . '/mindplay/walkway');
-    $filter->removeFileFromWhitelist(__DIR__ . '/mindplay/walkway/RoutingException.php');
-    $filter->removeFileFromWhitelist(__DIR__ . '/mindplay/walkway/InvocationException.php');
+    $filter->addDirectoryToWhitelist(__DIR__ . '/src');
+    $filter->removeFileFromWhitelist(__DIR__ . '/src/RoutingException.php');
+    $filter->removeFileFromWhitelist(__DIR__ . '/src/InvocationException.php');
 
     coverage()->start('test');
 }

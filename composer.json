@@ -16,8 +16,8 @@
 		"phpunit/php-code-coverage": "3.0.*@dev"
 	},
     "autoload": {
-        "psr-0": {
-            "mindplay\\walkway": ""
+        "psr-4": {
+            "mindplay\\walkway\\": "src/"
         }
     }
 }

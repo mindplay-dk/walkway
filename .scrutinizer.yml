@@ -1,5 +1,5 @@
 filter:
-    paths: [mindplay/walkway/*]
+    paths: [src/*]
 
 tools:
     external_code_coverage: true
