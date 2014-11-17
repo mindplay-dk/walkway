@@ -4,9 +4,7 @@ header('Content-type: text/plain');
 
 #define('NOISY', true); // uncomment to enable diagnostic messages
 
-/** @var \Composer\Autoload\ClassLoader $autoloader */
-$autoloader = require __DIR__ . '/vendor/autoload.php';
-$autoloader->addPsr4('mindplay\walkway\\', __DIR__ . '/src');
+require __DIR__ . '/vendor/autoload.php';
 
 set_error_handler(
     function($errno, $errstr, $errfile, $errline) {
