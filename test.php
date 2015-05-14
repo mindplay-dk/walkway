@@ -321,7 +321,7 @@ if (coverage()) {
 
     $report = new PHP_CodeCoverage_Report_Clover();
 
-    $report->process(coverage(), 'build/logs/clover.xml');
+    $report->process(coverage(), __DIR__ . '/build/logs/clover.xml');
 }
 
 exit(status());
