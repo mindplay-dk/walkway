@@ -1,15 +1,5 @@
 <?php
 
-/**
- * Walkway
- * =======
- *
- * A modular router for PHP.
- *
- * @author Rasmus Schultz <http://blog.mindplay.dk>
- * @license GPL3 <http://www.gnu.org/licenses/gpl-3.0.txt>
- */
-
 namespace mindplay\walkway;
 
 use Closure;
@@ -17,13 +7,14 @@ use Exception;
 use ReflectionFunction;
 
 /**
- * Base-class for Exception-types (possibly related to an anonymous function)
+ * Base-class for exception types, optionally adding some helpful diagnostic information
+ * about a user-defined closure that caused a problem.
  */
 abstract class FunctionException extends Exception
 {
     /**
-     * @param string $message the error-message
-     * @param Closure|null $func an anonymous function related to the error-message
+     * @param string       $message the error-message
+     * @param Closure|null $func    an anonymous function related to the error-message
      */
     public function __construct($message, Closure $func = null)
     {

@@ -1,21 +1,10 @@
 <?php
 
-/**
- * Walkway
- * =======
- *
- * A modular router for PHP.
- *
- * @author Rasmus Schultz <http://blog.mindplay.dk>
- * @license GPL3 <http://www.gnu.org/licenses/gpl-3.0.txt>
- */
-
 namespace mindplay\walkway;
 
 use Closure;
 use ArrayAccess;
 use ReflectionFunction;
-use ReflectionParameter;
 
 /**
  * This class represents an individual Route: a part of a path (referred to as a token)
@@ -66,24 +55,30 @@ class Route implements ArrayAccess
 
     /**
      * @var Closure[] map of patterns to Route definition-functions
+     *
      * @see resolve()
      */
     protected $patterns = array();
 
     /**
      * @var Closure[] map of method-names to functions
+     *
      * @see Request::execute()
      */
     protected $methods = array();
 
     /**
-     * @var Module a Module instance being delegated to
+     * @var Module|null a Module instance being delegated to
+     *
+     * @see delegate()
      */
     private $_delegate;
 
     /**
-     * @param $parent Route parent Route
-     * @param $token string the token (partial path) that was matched when this Route was constructed.
+     * @param Route  $parent parent Route
+     * @param string $token  the token (partial path) that was matched when this Route was constructed.
+     *
+     * @return void
      */
     protected function setParent(Route $parent, $token)
     {
@@ -96,8 +91,13 @@ class Route implements ArrayAccess
     }
 
     /**
+     * Sends a log entry to the parent Module for diagnostic purposes.
+     *
+     * Note that this has no effect unless the parent Module has a defined {@link Module::$onLog} callback.
+     *
      * @param string $message
-     * @see $onLog
+     *
+     * @see Module::$onLog
      */
     public function log($message)
     {
@@ -107,6 +107,11 @@ class Route implements ArrayAccess
     }
 
     /**
+     * @param string  $pattern
+     * @param Closure $init
+     *
+     * @return void
+     *
      * @see ArrayAccess::offsetSet()
      */
     public function offsetSet($pattern, $init)
@@ -116,6 +121,10 @@ class Route implements ArrayAccess
     }
 
     /**
+     * @param string $pattern
+     *
+     * @return bool
+     *
      * @see ArrayAccess::offsetExists()
      */
     public function offsetExists($pattern)
@@ -124,6 +133,10 @@ class Route implements ArrayAccess
     }
 
     /**
+     * @param string $pattern
+     *
+     * @return void
+     *
      * @see ArrayAccess::offsetUnset()
      */
     public function offsetUnset($pattern)
@@ -132,6 +145,10 @@ class Route implements ArrayAccess
     }
 
     /**
+     * @param string $pattern
+     *
+     * @return string
+     *
      * @see ArrayAccess::offsetGet()
      */
     public function offsetGet($pattern)
@@ -140,31 +157,38 @@ class Route implements ArrayAccess
     }
 
     /**
-     * @param string $name
+     * @param string $name HTTP method-name ("get", "head", "post", "put", "delete", etc.)
+     *
      * @return Closure
      */
     public function __get($name)
     {
         $name = strtolower($name);
 
-        return isset($this->methods[$name]) ? $this->methods[$name] : null;
+        return isset($this->methods[$name])
+            ? $this->methods[$name]
+            : null;
     }
 
     /**
-     * @param string $name
-     * @param Closure $value
+     * @param string  $name  HTTP method-name ("get", "head", "post", "put", "delete", etc.)
+     * @param Closure $value HTTP method callback
+     *
+     * @return void
      */
     public function __set($name, $value)
     {
         $this->log("define method: {$name}");
+
         $name = strtolower($name);
+
         $this->methods[$name] = $value;
     }
 
     /**
      * Follow a (relative) path, walking from this Route to a destination Route.
      *
-     * @param $path string relative path
+     * @param string $path relative path
      *
      * @return Route|null returns the resolved Route, or null if no Route was matched
      *
@@ -172,7 +196,7 @@ class Route implements ArrayAccess
      */
     public function resolve($path)
     {
-        /** @var string $part partial path being resolved in the current iteration */
+        /**@var string $part partial path being resolved in the current iteration */
         $part = trim($path, '/'); // trim leading/trailing slashes
 
         /** @var bool $matched indicates whether the last partial path matched a pattern */
@@ -190,6 +214,7 @@ class Route implements ArrayAccess
 
             if (count($route->patterns) === 0) {
                 $this->log("end of routes - no match found");
+
                 return null;
             }
 
@@ -197,8 +222,8 @@ class Route implements ArrayAccess
 
             foreach ($route->patterns as $pattern => $init) {
                 /**
-                 * @var string $pattern the pattern, with substitutions applied
-                 * @var Closure $init route initialization function
+                 * @var string  $pattern the pattern, with substitutions applied
+                 * @var Closure $init    route initialization function
                  */
 
                 // apply pattern-substitutions:
@@ -225,7 +250,7 @@ class Route implements ArrayAccess
 
                 $this->log("token '{$token}' matched by pattern '{$pattern}'");
 
-                $route = $this->createRoute($route, $token, $init);
+                $route = $this->createRoute($route, $token);
 
                 // identify named variables:
 
@@ -258,6 +283,7 @@ class Route implements ArrayAccess
                 if ($route->aborted) {
                     // the function explicitly aborted the route
                     $this->log("aborted");
+
                     return null;
                 }
 
@@ -286,6 +312,8 @@ class Route implements ArrayAccess
     }
 
     /**
+     * Execute an HTTP method callback with a given name, and return the result.
+     *
      * @param $method string name of HTTP method-handler to execute (e.g. 'get', 'put', 'post', 'delete', etc.)
      *
      * @return mixed|bool the value returned by the HTTP method-handler; true if the method-handler returned
@@ -307,6 +335,16 @@ class Route implements ArrayAccess
     }
 
     /**
+     * Delegate control to a different Module.
+     *
+     * When called from a route definition function, while resolving a route, control
+     * will be delegated to the given Module, meaning routing will continue for the
+     * remainder of the unresolve URL tokens within a given Module.
+     *
+     * This provides a means of creating modular routers, in which a subset of routes
+     * is packaged into a class derived from Module. (This approach also provides
+     * convenient reuse.)
+     *
      * @param Module $module a Module to which to delegate the routing during resolve()
      */
     public function delegate(Module $module)
@@ -315,7 +353,8 @@ class Route implements ArrayAccess
     }
 
     /**
-     * Call this method to explicitly abort the routing during resolve()
+     * Call this method to manually abort any further routing and abort from the
+     * current URL being resolved.
      */
     public function abort()
     {
@@ -323,13 +362,15 @@ class Route implements ArrayAccess
     }
 
     /**
+     * When a URL token has been resolved, this function is called to generate the
+     * next Route instance to be configured by the route callback function.
+     *
      * @param Route   $parent
      * @param string  $token
-     * @param Closure $init initialization function
      *
      * @return Route
      */
-    protected function createRoute(Route $parent, $token, Closure $init)
+    protected function createRoute(Route $parent, $token)
     {
         $route = new Route();
 
@@ -355,7 +396,7 @@ class Route implements ArrayAccess
     protected function invoke($func)
     {
         /**
-         * @var $params mixed[] the list of parameters to be applied to $func
+         * @var mixed[] $params the list of parameters to be applied to $func
          */
 
         $fn = new ReflectionFunction($func);
@@ -373,7 +414,7 @@ class Route implements ArrayAccess
                     continue;
 
                 default:
-                    if (! array_key_exists($param->name, $this->vars)) {
+                    if (!array_key_exists($param->name, $this->vars)) {
                         throw new InvocationException("missing parameter: \${$param->name}", $func);
                     }
 

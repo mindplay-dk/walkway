@@ -1,19 +1,9 @@
 <?php
 
-/**
- * Walkway
- * =======
- *
- * A modular router for PHP.
- *
- * @author Rasmus Schultz <http://blog.mindplay.dk>
- * @license GPL3 <http://www.gnu.org/licenses/gpl-3.0.txt>
- */
-
 namespace mindplay\walkway;
 
 /**
- * Exception thrown if there is a problem
+ * Exception thrown if routing fails because of invalid routing configuration.
  */
 class RoutingException extends FunctionException
 {
