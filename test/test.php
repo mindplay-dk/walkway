@@ -112,13 +112,7 @@ $module->get = function () {
 
 // Configure code coverage:
 
-if (coverage()) {
-    $filter = coverage()->filter();
-
-    $filter->addDirectoryToWhitelist(dirname(__DIR__) . '/src');
-
-    coverage()->start('test');
-}
+configure()->enableCodeCoverage(__DIR__ . '/build/logs/clover.xml', dirname(__DIR__) . '/src');
 
 // Run tests:
 
@@ -315,20 +309,4 @@ test(
     }
 );
 
-if (coverage()) {
-    coverage()->stop();
-
-    // output code coverage report to console:
-
-    $report = new PHP_CodeCoverage_Report_Text(10, 90, false, false);
-
-    echo $report->process(coverage(), false);
-
-    // output code coverage report for integration with CI tools:
-
-    $report = new PHP_CodeCoverage_Report_Clover();
-
-    $report->process(coverage(), __DIR__ . '/build/logs/clover.xml');
-}
-
-exit(status());
+exit(run());
