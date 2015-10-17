@@ -183,12 +183,16 @@ $result = $module->resolve('posts/42/edit')->execute('get');
 Integration
 ===========
 
+If you wish to integrate with a dependency injection container, you may implement
+[InvokerInterface](src/InvokerInterface.php) and inject your own invoker via the
+optional constructor argument to [Module](src/Module.php).
+
 If you have a service-container or some other framework/application component
 that needs to be easily accessible from within your routes, while avoiding the
 need for `use()` clauses down through the hierarchy of functions, you can insert
 values into `Route::$vars` during `init()` (or at any point) - this collection
 stores values captured while resolving a route, and these values are used
-to fill function-arguments for both route-definitions and action-methods.
+to inject function-arguments for both route-definitions and action-methods.
 
 
 IDE Support
