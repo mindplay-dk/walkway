@@ -1,5 +1,6 @@
 <?php
 
+use mindplay\walkway\Invoker;
 use mindplay\walkway\Route;
 use mindplay\walkway\Module;
 
@@ -145,6 +146,25 @@ test(
 );
 
 test(
+    'Can invoke closures',
+    function () {
+        $invoker = new Invoker();
+
+        $func = function ($foo, $bar) {
+            return ($foo === 1) && ($bar === 2) ? 'ok' : null;
+        };
+
+        eq($invoker->invoke($func, array('foo' => 1, 'bar' => 2)), 'ok', 'can invoke with given arguments');
+
+        $func = function ($foo = 1) {
+            return $foo === 1 ? 'ok' : null;
+        };
+
+        eq($invoker->invoke($func, array()), 'ok', 'can fill missing arguments with default value');
+    }
+);
+
+test(
     'Can resolve routes',
     function () use ($module) {
         $route = $module->resolve('/');
@@ -257,7 +277,7 @@ test(
 
         $route = new Module();
 
-        $route['foo/(\w+)'] = function (Route $route, $bar) {
+        $route['foo/(\w+)'] = function ($bar) {
             return $bar;
         };
 

@@ -59,9 +59,18 @@ class Module extends Route
      */
     public $onLog = null;
 
-    public function __construct()
+    /**
+     * @var InvokerInterface
+     */
+    public $invoker;
+
+    /**
+     * @param InvokerInterface $invoker
+     */
+    public function __construct(InvokerInterface $invoker = null)
     {
         $this->module = $this;
+        $this->invoker = $invoker ?: $this->createDefaultInvoker();
 
         $this->init();
     }
@@ -96,6 +105,9 @@ class Module extends Route
     {
         $module = $this;
 
+        $this->vars['route'] = $this;
+        $this->vars['module'] = $this;
+
         // define a default pattern-substitution with support for some common symbols:
 
         $this->substitutions['/(?<!\(\?)<([^\:]+)\:([^>]+)>/'] = function ($matches) use ($module) {
@@ -112,5 +124,13 @@ class Module extends Route
             'int'  => '\d+',
             'slug' => '[a-z0-9-]+',
         );
+    }
+
+    /**
+     * @return InvokerInterface
+     */
+    protected function createDefaultInvoker()
+    {
+        return new Invoker();
     }
 }

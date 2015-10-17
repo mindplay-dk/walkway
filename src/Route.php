@@ -4,7 +4,6 @@ namespace mindplay\walkway;
 
 use Closure;
 use ArrayAccess;
-use ReflectionFunction;
 
 /**
  * This class represents an individual Route: a part of a path (referred to as a token)
@@ -63,7 +62,7 @@ class Route implements ArrayAccess
     /**
      * @var Closure[] map of method-names to functions
      *
-     * @see Request::execute()
+     * @see execute()
      */
     protected $methods = array();
 
@@ -376,6 +375,8 @@ class Route implements ArrayAccess
 
         $route->module = $parent->module;
         $route->vars = $parent->vars;
+        $route->vars['route'] = $route;
+        $route->vars['module'] = $route->module;
 
         $route->setParent($parent, $token);
 
@@ -395,33 +396,6 @@ class Route implements ArrayAccess
      */
     protected function invoke($func)
     {
-        /**
-         * @var mixed[] $params the list of parameters to be applied to $func
-         */
-
-        $fn = new ReflectionFunction($func);
-
-        $params = array();
-
-        foreach ($fn->getParameters() as $param) {
-            switch ($param->name) {
-                case 'route':
-                    $params[] = $this;
-                    continue;
-
-                case 'module':
-                    $params[] = $this->module;
-                    continue;
-
-                default:
-                    if (!array_key_exists($param->name, $this->vars)) {
-                        throw new InvocationException("missing parameter: \${$param->name}", $func);
-                    }
-
-                    $params[] = $this->vars[$param->name];
-            }
-        }
-
-        return call_user_func_array($func, $params);
+        return $this->module->invoker->invoke($func, $this->vars);
     }
 }
