@@ -1,6 +1,9 @@
 <?php
 
+use Interop\Container\ContainerInterface;
+use mindplay\walkway\InteropInvoker;
 use mindplay\walkway\Invoker;
+use mindplay\walkway\InvokerInterface;
 use mindplay\walkway\Route;
 use mindplay\walkway\Module;
 
@@ -139,24 +142,35 @@ test(
     }
 );
 
-test(
-    'Can invoke closures',
-    function () {
-        $invoker = new Invoker();
+function test_invoker(InvokerInterface $invoker) {
+    test(
+        'Can invoke closures: ' . get_class($invoker),
+        function () use ($invoker) {
+            $func = function ($foo, $bar) {
+                return ($foo === 1) && ($bar === 2) ? 'ok' : null;
+            };
 
-        $func = function ($foo, $bar) {
-            return ($foo === 1) && ($bar === 2) ? 'ok' : null;
-        };
+            eq($invoker->invoke($func, array('foo' => 1, 'bar' => 2)), 'ok', 'can invoke with given arguments');
 
-        eq($invoker->invoke($func, array('foo' => 1, 'bar' => 2)), 'ok', 'can invoke with given arguments');
+            $func = function ($foo = 1) {
+                return $foo === 1 ? 'ok' : null;
+            };
 
-        $func = function ($foo = 1) {
-            return $foo === 1 ? 'ok' : null;
-        };
+            eq($invoker->invoke($func, array()), 'ok', 'can fill missing arguments with default value');
 
-        eq($invoker->invoke($func, array()), 'ok', 'can fill missing arguments with default value');
-    }
-);
+            expect(
+                'mindplay\walkway\InvocationException',
+                'when a parameter cannot be satisfied',
+                function () use ($invoker) {
+                    $invoker->invoke(function (ArrayObject $undefined) {
+                    }, array());
+                }
+            );
+        }
+    );
+}
+
+test_invoker(new Invoker());
 
 test(
     'Can resolve routes',
@@ -308,5 +322,35 @@ test(
         );
     }
 );
+
+class MockDependency {}
+
+class MockContainer implements ContainerInterface
+{
+    public function get($id)
+    {
+        return new MockDependency();
+    }
+
+    public function has($id)
+    {
+        return $id === 'MockDependency';
+    }
+}
+
+test(
+    'Can integrate with DI container (via container-interop)',
+    function () {
+        $module = new Module(new InteropInvoker(new MockContainer()));
+
+        $module->get = function (MockDependency $dep) {
+            return $dep;
+        };
+
+        ok($module->execute() instanceof MockDependency, 'can resolve dependency via type-hint');
+    }
+);
+
+test_invoker(new InteropInvoker(new MockContainer()));
 
 exit(run());

@@ -3,6 +3,11 @@ Walkway
 
 Elegant, modular routing for PHP - inspired by [vlucas][1]/[bulletphp][2].
 
+Supports [PHP-DI](http://php-di.org/), [Aura.DI](https://github.com/auraphp/Aura.Di),
+[Unbox](https://github.com/mindplay-dk/unbox) and
+[many other](https://github.com/container-interop/container-interop#compatible-projects)
+DI containers via [container-interop](https://github.com/container-interop/container-interop).
+
 [![Build Status](https://travis-ci.org/mindplay-dk/walkway.png)](https://travis-ci.org/mindplay-dk/walkway)
 
 [![Code Coverage](https://scrutinizer-ci.com/g/mindplay-dk/walkway/badges/coverage.png)](https://scrutinizer-ci.com/g/mindplay-dk/walkway/)
@@ -180,12 +185,16 @@ $module['posts'] = function ($route) {
 $result = $module->resolve('posts/42/edit')->execute('get');
 ```
 
-Integration
-===========
+Container Integration
+=====================
 
 If you wish to integrate with a dependency injection container, you may implement
 [InvokerInterface](src/InvokerInterface.php) and inject your own invoker via the
 optional constructor argument to [Module](src/Module.php).
+
+An invoker is [provided](src/InteropInvoker.php) to enable direct integration with a
+[variety](https://github.com/container-interop/container-interop#compatible-projects)
+of DI containers via [container-interop](https://github.com/container-interop/container-interop).
 
 If you have a service-container or some other framework/application component
 that needs to be easily accessible from within your routes, while avoiding the
@@ -203,12 +212,12 @@ code uses type-hints - for example:
 
 ```PHP
 $this['hello'] = function (Route $route) {
-    $route->___ // <- auto-completes!
+    $route->_ // <- auto-completes!
 };
 ```
 
 This also provides extra safety from inadvertently getting your parameters/types
-mixed up.
+mixed up. It's also crucial if you're using a DI container; see above.
 
 
 Creating URLs
