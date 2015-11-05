@@ -65,7 +65,7 @@ class Module extends Route
     public $invoker;
 
     /**
-     * @param InvokerInterface $invoker
+     * @param InvokerInterface|null $invoker optional custom invoker
      */
     public function __construct(InvokerInterface $invoker = null)
     {
