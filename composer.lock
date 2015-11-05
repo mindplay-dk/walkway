@@ -4,9 +4,10 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "hash": "5ea275afd8e09d4167d5e36bd226ee81",
-    "content-hash": "63761ee7141a7cfb052b4a9f83e6b439",
-    "packages": [
+    "hash": "63ac78191a9f0957507308a4f5180b2a",
+    "content-hash": "4df6ad753519a5dec51654064c088f37",
+    "packages": [],
+    "packages-dev": [
         {
             "name": "container-interop/container-interop",
             "version": "1.1.0",
@@ -33,9 +34,7 @@
             ],
             "description": "Promoting the interoperability of container objects (DIC, SL, etc.)",
             "time": "2014-12-30 15:22:37"
-        }
-    ],
-    "packages-dev": [
+        },
         {
             "name": "mindplay/testies",
             "version": "0.2.0",

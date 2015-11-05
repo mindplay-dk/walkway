@@ -14,6 +14,9 @@ use ReflectionFunction;
  * This provides integration with a number of DI containers via `container-interop`:
  *
  * https://github.com/container-interop/container-interop#compatible-projects
+ *
+ * To use this, you will need to install the `container-interop/container-interop`
+ * Composer package.
  */
 class InteropInvoker implements InvokerInterface
 {
