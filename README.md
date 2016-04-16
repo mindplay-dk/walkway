@@ -8,10 +8,9 @@ Supports [PHP-DI](http://php-di.org/), [Aura.DI](https://github.com/auraphp/Aura
 [many other](https://github.com/container-interop/container-interop#compatible-projects)
 DI containers via [container-interop](https://github.com/container-interop/container-interop).
 
+[![PHP Version](https://img.shields.io/badge/php-5.3%2B-blue.svg)](https://packagist.org/packages/mindplay/walkway)
 [![Build Status](https://travis-ci.org/mindplay-dk/walkway.png)](https://travis-ci.org/mindplay-dk/walkway)
-
 [![Code Coverage](https://scrutinizer-ci.com/g/mindplay-dk/walkway/badges/coverage.png)](https://scrutinizer-ci.com/g/mindplay-dk/walkway/)
-
 [![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/mindplay-dk/walkway/badges/quality-score.png)](https://scrutinizer-ci.com/g/mindplay-dk/walkway/)
 
 Note that this is not a framework, and not a micro-framework - this library
