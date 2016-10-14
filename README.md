@@ -112,7 +112,7 @@ class HelloWorldModule extends Module
 }
 ```
 
-Encapsulating routes in a Module also provides modularity - to delegate control from
+Encapsulating routes in a Module also provides modularity - to delegate control
 from one Module to another, call the delegate() method on the Route object:
 
 ```PHP
