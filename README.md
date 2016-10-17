@@ -112,7 +112,7 @@ class HelloWorldModule extends Module
 }
 ```
 
-Encapsulating routes in a Module also provides modularity - to delegate control from
+Encapsulating routes in a Module also provides modularity - to delegate control
 from one Module to another, call the delegate() method on the Route object:
 
 ```PHP
@@ -264,7 +264,7 @@ Do you really need a framework for that? Simple solutions for simple problems, p
 Creating a simple Front Controller
 ==================================
 
-Your can [use Walkway as middleware](https://gist.github.com/mindplay-dk/11e7c08ff6aa4d3486a4)
+You can [use Walkway as middleware](https://gist.github.com/mindplay-dk/11e7c08ff6aa4d3486a4)
 with [Conduit](https://github.com/phly/conduit).
 
 To use Walkway as a bare-bones front-controller, create an "index.php" file along the lines of:
